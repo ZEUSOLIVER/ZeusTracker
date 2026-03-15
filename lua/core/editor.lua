@@ -178,7 +178,7 @@ function editor.drawPattern(q)
 				love.graphics.print(noteK, 20+x*100, 180+y*20)
 				love.graphics.setColor(1, 1, 1)
 				if instrument ~= 0 then
-					love.graphics.setColor(0.2, 1, 0.2)
+					love.graphics.setColor(0, 1, 0)
 				end
 				love.graphics.print((instrument ~= 0) and string.format("%02X", instrument) or "--", 55+x*100, 180+y*20)
 				love.graphics.setColor(1, 1, 1)
