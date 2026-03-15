@@ -3,6 +3,7 @@ local filePicker = require("lua/core/filepicker")
 local mod = require("lua/core/loadMod")
 local editor = require("lua/core/editor")
 local effects = require("lua/core/effects")
+local logo = require("lua/core/logo")
 
 loaded_mod = false
 local auto_play = false
@@ -36,6 +37,7 @@ numChannels = 4
 channels = {}
 releaseChannel = {}
 lastNote = {}
+periodTone = 0
 
 currentPattern = 1
 
@@ -82,18 +84,21 @@ function oscilationWave(screenWidth, screenHeight)
 	local offsetAmplitude = 0
 	local length = (mod_sampleDecoded[currentSample] == nil) and 1 or #mod_sampleDecoded[currentSample]
 	local zoomEditorT = zoomEditor*(screenWidth)/length
+	local wavePrecision = math.max(math.floor(zoomEditorT), 1)
+	print(wavePrecision)
 	love.graphics.setColor(0, 1, 180/255)
 	for x=1, length-1, 1 do
 		if offsetplay < screenWidth then
-			love.graphics.line(20+offsetplay, 200+screenHeight+offsetAmplitude, 20+(x-1)*zoomEditorT+zoomEditorT, 200+screenHeight+mod_sampleDecoded[currentSample][x+1]/2)
+			love.graphics.line(20+offsetplay, 200+screenHeight+offsetAmplitude, 20+(x-1)*zoomEditorT+zoomEditorT, 200+screenHeight+mod_sampleDecoded[currentSample][x+1]/4)
 			offsetplay = (x-1)*zoomEditorT+zoomEditorT
-			offsetAmplitude = mod_sampleDecoded[currentSample][x+1]/2
+			offsetAmplitude = mod_sampleDecoded[currentSample][x+1]/4
 		end
 	end
 	love.graphics.setCanvas()
 end
 
 function love.load()
+	logo.load()
 	modstable = filePicker.load("./")
 	editor.noteOffset(856)
 	editor.localNoteOffset(offsetKey)
@@ -101,7 +106,7 @@ function love.load()
 end
 
 local beatTimer = 0
-patternPosition = 1
+patternPosition = 0
 
 function toBinary(n, bits)
     local s = ""
@@ -115,9 +120,10 @@ end
 
 function love.update(dt)
 	if selected_file ~= "" then
-		ticksPerLine = 6
-		bpm = 125
+		editor.init()
 		mod.load(selected_file)
+		currentPattern = 1
+		patternPosition = 64*(mod_song__position[currentPattern])+1
 		for i=1, 31 do
 			local length = mod_sample_data[i] or 0
 			if length ~= 0 then
@@ -150,36 +156,36 @@ function love.update(dt)
 		local lineTime = ticksPerLine * tickTime
 		if beatTimer >= lineTime then 
 			beatTimer = beatTimer - lineTime
-			if patternPosition >= 64*(mod_song__position[currentPattern]+1) then
+			if patternPosition >= 64*(mod_song__position[currentPattern]+1)+1 then
 				currentPattern = currentPattern+1
-				patternPosition = 64*(mod_song__position[currentPattern])
+				patternPosition = 64*(mod_song__position[currentPattern])+1
 			end
 			for channel=0, numChannels-1 do
 				local base = (patternPosition-1)*numChannels*4 + channel*4
-				print(base, mod_data_pattern[base+1])
+				--print(base, mod_data_pattern[base+1])
+				--print(currentPattern, patternPosition, 64*(mod_song__position[currentPattern]+1)+1, "realPosition Pattern: " .. mod_song__position[currentPattern])
 				local b1 = mod_data_pattern[base+1]
 				local b2 = mod_data_pattern[base+2]
 				local b3 = mod_data_pattern[base+3]
 				local b4 = mod_data_pattern[base+4]
 				local period = bit.bor(bit.lshift(bit.band(b1, 0x0F), 8), b2)
+				periodTone = period
 				local instrument = bit.bor(bit.band(b1, 0xF0), bit.rshift(bit.band(b3, 0xF0), 4))
 				local effect = bit.band(b3, 0x0F)
 				local param = b4
 				effects.applyPreEffects(effect, param)
-				print(toBinary(b1, 8), toBinary(b2, 8), toBinary(b3, 8), toBinary(period, 12))
-				print("tick: " .. ticksPerLine .. " bpm: " .. bpm .. " Channels: " .. numChannels)
+				--print(toBinary(b1, 8), toBinary(b2, 8), toBinary(b3, 8), toBinary(period, 12))
+				--print("ticks: " .. ticksPerLine .. " bpm: " .. bpm)
 				if period > 0 and instrument > 0 then
-					editor.PLAY_NEW_SAMPLE(period, instrument, 44100, channel)
-					effects.applyPosEffects(effect, param, channel)
+					editor.PLAY_NEW_SAMPLE(period, instrument, 44100, channel+1)
+					effects.applyPosEffects(effect, param, channel+1)
 				end
 			end
 			patternPosition=patternPosition+1
 		end
-	elseif loaded_mod then
-		currentPattern = 1
-		patternPosition = 64*mod_song__position[currentPattern]+1
 	end
 	t=t+1
+	logo.update(dt/2+periodTone/2048)
 end
 
 
@@ -282,8 +288,24 @@ function love.wheelmoved(x, y)
 	end
 end
 
+distance = 0
+
 function love.draw()
-	love.graphics.clear(1, 0, 1)
+	love.graphics.clear(0, 0, 0)
+	love.graphics.setColor(1, 1, 1)
+	logo.draw("", 0, 0, 0, 0, 0, 500, 20)
+	local x = 0
+	local y = 0
+	local z = -15
+	local angle_x = t/40
+	local angle_y = 2
+	if distance < 120 then
+		distance = t/10
+	end
+	logo.ASCIIZ(x, y, z, angle_x, angle_y, 500, distance)
+	logo.ASCIIE(x, y, z, angle_x, angle_y, 500, distance)
+	logo.ASCIIU(x, y, z+17, angle_x, angle_y, 500, distance)
+	logo.ASCIIS(x, y, z+27, angle_x, angle_y, 500, distance)
 	filePicker.draw(t)
 	love.graphics.setLineWidth(1)
 	love.graphics.setLineStyle("rough")
@@ -302,7 +324,7 @@ function love.draw()
 		for i=1, 11 do
 			love.graphics.print(mod_samples__info[(i-1)*6+1],200+screenWidth/2,(i-1)*14+20)
 		end
-		--editor.drawPattern(32)
+		editor.drawPattern(32)
 	end
 	if showSample then
 		love.graphics.setColor(10/255,10/255,10/255)

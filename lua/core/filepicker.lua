@@ -48,7 +48,7 @@ function filePicker.draw(t)
             		else
                 		love.graphics.setColor(1, 1, 1) -- branco
             		end
-            		love.graphics.print((modstable[i+y] ~= nil) and modstable[i+y] or "", 50, 50 + p * 20)
+            		love.graphics.print((modstable[i+y] ~= nil) and modstable[i+y] or "none", 20, 20 + p * 20)
 			p = p+1
 		end
         end
@@ -57,11 +57,15 @@ function filePicker.draw(t)
 end
 
 function filePicker.down()
-	if selected < heigth then
+	if selected < heigth and selected < #modstable then
 		selected = selected + 1
 	else
-		--selected = selected + 1
-		y = (y+1 < #modstable-heigth) and y+1 or y
+		if y+1 < #modstable-heigth+1 then
+			y = y+1
+		else
+			selected = 1
+			y = 0
+		end
 	end
 end
 
@@ -69,8 +73,17 @@ function filePicker.up()
 	if selected > 1 then
 		selected = selected - 1
 	else
-		--selected = selected - 1
-		y = (y-1 >= 0) and y-1 or y
+		if y-1 >= 0 then
+			y = y-1
+		--[[else
+			if #modstable > heigth then
+				selected = #modstable-heigth+7
+				y = #modstable-heigth
+			else
+				selected = #modstable
+			end
+			print(selected, #modstable)]]
+		end
 	end
 end
 
@@ -95,6 +108,7 @@ function filePicker.select()
 		filePicker.load(currentPath)
 		--filePathReturn = filePathReturn + 1
 		selected = 1
+		y = 0
 		return 0
 	end
 end
