@@ -144,14 +144,16 @@ function editor.REALTIME_PLAY_SAMPLE(arg1, arg2, arg3, channel)
 end
 
 function editor.drawPattern(q)
+	local gridSizeX = 100
+	local gridSizeY = 20
 	local gridPositionX = 20
 	local gridPositionY = 180
-	local gridX = 100*numChannels 
+	local gridX = gridSizeX*numChannels 
 	local gridY = 400
-	for gx = 0, gridX, 100 do
+	for gx = 0, gridX, gridSizeX do
 		love.graphics.line(gx+gridPositionX, gridPositionY, gx+gridPositionX, gridY+gridPositionY)
 	end
-	for gy = 0, gridY, 20 do
+	for gy = 0, gridY, gridSizeY do
 		love.graphics.line(gridPositionX, gy+gridPositionY, gridX+gridPositionX, gy+gridPositionY)
 	end
 	for y = 0, 19 do
@@ -178,9 +180,9 @@ function editor.drawPattern(q)
 				love.graphics.print(noteK, 20+x*100, 180+y*20)
 				love.graphics.setColor(1, 1, 1)
 				if instrument ~= 0 then
-					love.graphics.setColor(0, 1, 0)
+					love.graphics.setColor(0.4, 1, 0.4)
 				end
-				love.graphics.print((instrument ~= 0) and string.format("%02X", instrument) or "--", 55+x*100, 180+y*20)
+				love.graphics.print((instrument ~= 0) and string.format("%02X", instrument) or "--", 55+x*gridSizeX, 180+y*gridSizeY)
 				love.graphics.setColor(1, 1, 1)
 				if effect == 0xF then
 					love.graphics.setColor(1, 1, 0)
@@ -191,8 +193,8 @@ function editor.drawPattern(q)
 				if effect == 0xD then
 					love.graphics.setColor(0, 1, 1)
 				end
-				love.graphics.print((effect ~= 0) and string.format("%X", effect) or "-", 80+x*100, 180+y*20)
-				love.graphics.print((effect ~= 0) and string.format("%02X", param) or "--", 90+x*100, 180+y*20)
+				love.graphics.print((effect ~= 0) and string.format("%X", effect) or "-", 80+x*gridSizeX, 180+y*gridSizeY)
+				love.graphics.print((effect ~= 0) and string.format("%02X", param) or "--", 90+x*gridSizeX, 180+y*gridSizeY)
 			end
 		end
 	end

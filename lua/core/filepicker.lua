@@ -13,7 +13,7 @@ local q = 1
 function filePicker.load(path)
 	counterFolders = 0
 	modstable = {"./.."} 
-	local command 
+	--[[local command 
 	if package.config:sub(1,1) == "\\" then
 		command = 'dir "' .. path .. '" /b *.mod' 
 	else
@@ -24,7 +24,7 @@ function filePicker.load(path)
 		table.insert(modstable, line) 
 		counterFolders = counterFolders+1
 	end
-	table.remove(modstable, 2)
+	table.remove(modstable, 2)]]
 	local command 
 	if package.config:sub(1,1) == "\\" then
 		command = 'dir "' .. path .. '" /b *.mod' 
@@ -44,7 +44,7 @@ function filePicker.draw(t)
     	for i, f in ipairs(modstable) do
 		if i <= heigth then
 			if p == selected then
-                		love.graphics.setColor(1, 1, 0) -- amarelo
+                		love.graphics.setColor(1, 1, 0.4) -- amarelo
             		else
                 		love.graphics.setColor(1, 1, 1) -- branco
             		end
