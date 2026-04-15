@@ -5,8 +5,17 @@ function effects.nextPattern()
 end
 
 function effects.tonePortUp(param, channel)
-	local pitch = channels[channel]:getPitch()
-	channels[channel]:setPitch(pitch+(param / 128))
+	local pitch = channels[channel][2]
+	pitch = pitch - param*0.1
+	pitch = math.max(113, pitch)
+	channels[channel][2] = pitch
+end
+
+function effects.tonePortDown(param, channel)
+	local pitch = channels[channel][2]
+	pitch = pitch + param*0.1
+	pitch = math.min(856, pitch)
+	channels[channel][2] = pitch
 end
 
 function effects.ticksAndBpm(param)
@@ -20,19 +29,18 @@ function effects.ticksAndBpm(param)
 end
 
 function effects.volume(vol, channel)
-	local v = math.max(0, math.min(vol / 64, 1))
-	channels[channel]:setVolume(v)
+	channels[channel][3] = vol
 end
 
 function effects.volumeSlide(x, y, channel)
-	local volume = channels[channel]:getVolume()
-	if x > 0 and down == 0 then
+	local volume = channels[channel][3]
+	if x > 0 then
 		volume = volume + x / 64
-	elseif down > 0 and up == 0 then
+	elseif y > 0 then
 		volume = volume - y / 64
-	elseif up > 0 and down > 0 then
-		volume = volume + x / 64
 	end
+	--volume = math.max(0.0, math.min(1.0, volume))
+	channels[channel][3] = volume
 end
 
 function effects.applyPosEffects(effect, param, channel)
@@ -40,13 +48,16 @@ function effects.applyPosEffects(effect, param, channel)
 		--effects.volume(param)
 	end
 	if effect == 0x3 then
-		--effects.tonePortUp(param, channel)
+		effects.tonePortUp(param, channel)
+	end
+	if effect == 0x2 then
+		effects.tonePortDown(param, channel)
 	end
 	if effect == 0xC then
 		effects.volume(param, channel)
 	end
 	if effect == 0xA then
-		--effects.volumeSlide(bit.shift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), channel)
+		effects.volumeSlide(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), channel)
 	end
 end
 

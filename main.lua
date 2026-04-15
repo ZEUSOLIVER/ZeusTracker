@@ -2,6 +2,9 @@
 -- Licensed under the GNU General Public License v3.0
 -- See LICENSE file in the project root for details.
 
+local AMIGA_CLOCK = 7093789.2
+
+local channel = require("lua/core/channel")
 local ffi = require("ffi")
 local filePicker = require("lua/core/filepicker")
 local mod = require("lua/core/loadMod")
@@ -36,9 +39,10 @@ canvas:setFilter("linear", "nearest")
 local modFormat = "M.K."
 
 local currentSample = 1
-local sampleRate = 44100
+sampleRate = 44010
 numChannels = 4
 channels = {}
+channelPositions = {}
 releaseChannel = {}
 lastNote = {}
 periodTone = 0
@@ -107,6 +111,7 @@ function love.load()
 	editor.noteOffset(856)
 	editor.localNoteOffset(offsetKey)
 	love.graphics.setFont(font)
+	editor.sendBuffer({0}, 1)
 end
 
 local beatTimer = 0
@@ -126,6 +131,7 @@ function love.update(dt)
 	if selected_file ~= "" then
 		editor.init()
 		mod.load(selected_file)
+		channel.init(numChannels, channels)
 		currentPattern = 1
 		patternPosition = 64*(mod_song__position[currentPattern])+1
 		for i=1, 31 do
@@ -158,7 +164,7 @@ function love.update(dt)
 		beatTimer = beatTimer + dt
 		local tickTime = 2.5 / bpm
 		local lineTime = ticksPerLine * tickTime
-		if beatTimer >= lineTime then 
+		while beatTimer >= lineTime do
 			beatTimer = beatTimer - lineTime
 			if patternPosition >= 64*(mod_song__position[currentPattern]+1)+1 then
 				currentPattern = currentPattern+1
@@ -181,20 +187,24 @@ function love.update(dt)
 				--print(toBinary(b1, 8), toBinary(b2, 8), toBinary(b3, 8), toBinary(period, 12))
 				--print("ticks: " .. ticksPerLine .. " bpm: " .. bpm)
 				if period > 0 and instrument > 0 then
-					editor.PLAY_NEW_SAMPLE(period, instrument, 44100, channel+1)
-					effects.applyPosEffects(effect, param, channel+1)
+					channels[channel+1][1] = instrument
+					channels[channel+1][2] = period
+					channels[channel+1][3] = 64
+					channels[channel+1][4] = 1
 				end
+				effects.applyPosEffects(effect, param, channel+1)
 			end
-			patternPosition=patternPosition+1
+			patternPosition = patternPosition + 1
 		end
 	end
+	editor.channelPlay(numChannels)
 	t=t+1
 	logo.update(dt/2+periodTone/2048)
 end
 
 
 function love.keypressed(key, scancode, isrepeat)
-	editor.keyMap(key, currentSample)
+	editor.keyMap(key, currentSample, channels)
 
    	if key == "escape" then
 		collectgarbage()
@@ -204,6 +214,9 @@ function love.keypressed(key, scancode, isrepeat)
 	if key == "space" then
 		if auto_play then
 			auto_play = false
+			for i = 1, numChannels do
+				channels[i][1] = 0
+			end
 		else
 			auto_play = true
 		end
