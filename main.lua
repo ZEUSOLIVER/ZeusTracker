@@ -42,7 +42,7 @@ canvas:setFilter("linear", "nearest")
 local modFormat = "M.K."
 
 local currentSample = 1
-sampleRate = 44010
+sampleRate = 44100
 numChannels = 4
 channels = {}
 channelPositions = {}
@@ -175,13 +175,13 @@ function love.update(dt)
 					local instrument = bit.bor(bit.band(b1, 0xF0), bit.rshift(bit.band(b3, 0xF0), 4))
 					local effect = bit.band(b3, 0x0F)
 					local param = b4
-					effects.applyPreEffects(effect, param, channel+1)
 					--print(toBinary(b1, 8), toBinary(b2, 8), toBinary(b3, 8), toBinary(period, 12))
 					--print("ticks: " .. ticksPerLine .. " bpm: " .. bpm)
 					if period > 0 and instrument > 0 then
 						if effect == 0x3 then
 							if param > 0 then
 								channels[channel+1][6] = param
+								channels[channel+1][3] = 1
 							end
 							channels[channel+1][5] = period
 						else
@@ -191,6 +191,7 @@ function love.update(dt)
 							channels[channel+1][4] = 1
 						end
 					end
+					effects.applyPreEffects(effect, param, channel+1)
 				end
 			else
 				for channel=0, numChannels-1 do

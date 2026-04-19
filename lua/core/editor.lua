@@ -294,7 +294,7 @@ function editor.channelPlay(qChannels)
 								if channel == 0 or channel == 2 or channel == 4 or channel == 6 then
 									mixLeft = mixLeft+sample[math.floor(pos)]*volume
 								elseif channel == 1 or channel == 3 or channel == 5 or channel == 7 then
-									mixRight = mixRight+sample[math.floor(pos)]*volume							end
+									mixRight = mixRight+sample[math.floor(pos)]*volume						end
 							end
 							currentChannel[4] = pos+advance
 						else
@@ -311,8 +311,8 @@ function editor.channelPlay(qChannels)
 					end
 				end
 			end
-			mixLeft = mixLeft
-			mixRight = mixRight
+			mixLeft = mixLeft/2
+			mixRight = mixRight/2
 			buffer[i] = {mixLeft, mixRight}
 		end
 		biquadFilter:process(buffer)
@@ -343,7 +343,7 @@ function editor.keyMap(key, sampleNum, channels)
 			end
 			channels[increment][1] = sampleNum
 			channels[increment][2] = keyMap[key]
-			channels[increment][3] = 64
+			channels[increment][3] = 1
 			channels[increment][4] = 1
 			if increment >= numChannels then
 				increment = increment + 1

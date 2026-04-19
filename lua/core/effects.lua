@@ -42,6 +42,14 @@ function effects.tonePort(param, channel)
 	channels[channel][2] = currentPitch
 end
 
+function effects.samplePosition(param, channel)
+	if param > 0 then	
+		channels[channel][7] = param
+	end
+	local positionEffect = channels[channel][7] or 0
+	channels[channel][4] = positionEffect*256
+end
+
 function effects.ticksAndBpm(param)
 	if param == 0 then
 		ticksPerLine = 1
@@ -63,13 +71,16 @@ function effects.volumeSlide(x, y, channel)
 	elseif y > 0 then
 		volume = volume - y / 64
 	end
-	--volume = math.max(0.0, math.min(1.0, volume))
+	volume = math.max(0.0, math.min(1.0, volume))
 	channels[channel][3] = volume
 end
 
 function effects.applyPosEffects(effect, param, channel)
 	if effect == 0x0 and param > 0 then
 		--effects.volume(param)
+	end
+	if effect == 0xC then
+		effects.volume(param, channel)
 	end
 	if effect == 0x1 then
 		effects.portUp(param, channel)
@@ -89,11 +100,11 @@ function effects.applyPreEffects(effect, param, channel)
 	if effect == 0xD then
 		effects.nextPattern()
 	end
-	if effect == 0xC then
-		effects.volume(param, channel)
-	end
 	if effect == 0xF then
 		effects.ticksAndBpm(param)
+	end
+	if effect == 0x9 then
+		effects.samplePosition(param, channel)
 	end
 end
 
