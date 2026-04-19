@@ -88,15 +88,13 @@ local biquadFilter = {
 }
 
 function biquadFilter:setLowpass(cutoff_Hz, resonance_Q, sampleRate)
-    -- Trava de segurança para a matemática não quebrar
     cutoff_Hz = math.max(10, math.min(cutoff_Hz, sampleRate / 2.1))
-    resonance_Q = math.max(0.1, resonance_Q) -- O normal é entre 0.707 e 4.0
+    resonance_Q = math.max(0.1, resonance_Q)
 
     local w0 = 2 * math.pi * cutoff_Hz / sampleRate
     local alpha = math.sin(w0) / (2 * resonance_Q)
     local cosw0 = math.cos(w0)
 
-    -- Calcula os coeficientes oficiais da fórmula Biquad
     local a0 = 1 + alpha
     self.b0 = ((1 - cosw0) / 2) / a0
     self.b1 = (1 - cosw0) / a0
@@ -107,40 +105,34 @@ end
 
 function biquadFilter:process(buffer)
     for i = 1, #buffer do
-        local x0 = buffer[i][1] -- Amostra atual crua
+        local x0 = buffer[i][1]
 
-        -- A Mágica do Biquad: Mistura o presente com o passado
         local y0 = self.b0 * x0 
                  + self.b1 * self.x1 
                  + self.b2 * self.x2
                  - self.a1 * self.y1 
                  - self.a2 * self.y2
 
-        -- Atualiza a memória da linha do tempo
         self.x2 = self.x1
         self.x1 = x0
         self.y2 = self.y1
         self.y1 = y0
 
-        -- Substitui o som no buffer pelo som filtrado
         buffer[i][1] = y0
 
-	local x0 = buffer[i][2] -- Amostra atual crua
+	local x0 = buffer[i][2]
 
-        -- A Mágica do Biquad: Mistura o presente com o passado
         local y0 = self.b0 * x0 
                  + self.b1 * self.x1 
                  + self.b2 * self.x2
                  - self.a1 * self.y1 
                  - self.a2 * self.y2
 
-        -- Atualiza a memória da linha do tempo
         self.x2 = self.x1
         self.x1 = x0
         self.y2 = self.y1
         self.y1 = y0
 
-        -- Substitui o som no buffer pelo som filtrado
         buffer[i][2] = y0
     end
 end
