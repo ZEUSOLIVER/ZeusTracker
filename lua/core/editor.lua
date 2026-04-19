@@ -1,4 +1,5 @@
 local editor = {}
+local selectedChannel = 0
 increment = 1
 local type_interpolate = "none"
 local noteOffset = 0
@@ -76,6 +77,78 @@ queuedCounter = 1
 
 patternPositionY = 0
 
+local biquadFilter = {
+    -- Memória da onda (passado)
+    x1 = 0, x2 = 0,
+    y1 = 0, y2 = 0,
+    
+    -- Coeficientes matemáticos
+    b0 = 0, b1 = 0, b2 = 0,
+    a1 = 0, a2 = 0
+}
+
+function biquadFilter:setLowpass(cutoff_Hz, resonance_Q, sampleRate)
+    -- Trava de segurança para a matemática não quebrar
+    cutoff_Hz = math.max(10, math.min(cutoff_Hz, sampleRate / 2.1))
+    resonance_Q = math.max(0.1, resonance_Q) -- O normal é entre 0.707 e 4.0
+
+    local w0 = 2 * math.pi * cutoff_Hz / sampleRate
+    local alpha = math.sin(w0) / (2 * resonance_Q)
+    local cosw0 = math.cos(w0)
+
+    -- Calcula os coeficientes oficiais da fórmula Biquad
+    local a0 = 1 + alpha
+    self.b0 = ((1 - cosw0) / 2) / a0
+    self.b1 = (1 - cosw0) / a0
+    self.b2 = ((1 - cosw0) / 2) / a0
+    self.a1 = (-2 * cosw0) / a0
+    self.a2 = (1 - alpha) / a0
+end
+
+function biquadFilter:process(buffer)
+    for i = 1, #buffer do
+        local x0 = buffer[i][1] -- Amostra atual crua
+
+        -- A Mágica do Biquad: Mistura o presente com o passado
+        local y0 = self.b0 * x0 
+                 + self.b1 * self.x1 
+                 + self.b2 * self.x2
+                 - self.a1 * self.y1 
+                 - self.a2 * self.y2
+
+        -- Atualiza a memória da linha do tempo
+        self.x2 = self.x1
+        self.x1 = x0
+        self.y2 = self.y1
+        self.y1 = y0
+
+        -- Substitui o som no buffer pelo som filtrado
+        buffer[i][1] = y0
+
+	local x0 = buffer[i][2] -- Amostra atual crua
+
+        -- A Mágica do Biquad: Mistura o presente com o passado
+        local y0 = self.b0 * x0 
+                 + self.b1 * self.x1 
+                 + self.b2 * self.x2
+                 - self.a1 * self.y1 
+                 - self.a2 * self.y2
+
+        -- Atualiza a memória da linha do tempo
+        self.x2 = self.x1
+        self.x1 = x0
+        self.y2 = self.y1
+        self.y1 = y0
+
+        -- Substitui o som no buffer pelo som filtrado
+        buffer[i][2] = y0
+    end
+end
+
+function editor.initEngine(f, r)
+	biquadFilter:setLowpass(f, r, sampleRate)
+end
+
 function editor.noteOffset(offset)
 	noteOffset = offset
 end
@@ -85,16 +158,17 @@ function editor.localNoteOffset(offset)
 end
 
 function editor.newQueueableSource(sampleRate1)
-	sourceSound = love.audio.newQueueableSource(sampleRate1, 8, 1, 8)
+	sourceSound = love.audio.newQueueableSource(sampleRate1, 8, 2, 8)
 end
 
 function editor.sendBuffer(buffer, chunkSize)
-    	local sd = love.sound.newSoundData(chunkSize, sampleRate, 8, 1)
+    	local sd = love.sound.newSoundData(chunkSize, sampleRate, 8, 2)
 	if not sourceSound then
 		editor.newQueueableSource(sampleRate)
 	end
     	for i = 0, chunkSize-1 do
-    	    sd:setSample(i, buffer[i+1]/256)
+	    sd:setSample(i, 1, buffer[i+1][1]/256)
+	    sd:setSample(i, 2, buffer[i+1][2]/256)
     	end
 	--[[if sourceSound.getFreeBufferCount then
 		local free = sourceSound:getFreeBufferCount()
@@ -122,8 +196,12 @@ function editor.drawPattern(q)
 	for y = 0, 19 do
 		for x = 0, numChannels-1 do
 			local data = (y+patternPosition-1)*(numChannels*4) + x*4
-			love.graphics.setColor(1, 1, 1)
 			if y+patternPosition-1 < 64*(mod_song__position[currentPattern]+1)+1 then
+				if y == 0 and editor_mod then
+					love.graphics.setColor(1, 0, 0, 0.1)
+					love.graphics.rectangle("fill", gridPositionX, gridPositionY, gridX, 20)
+				end
+				love.graphics.setColor(1, 1, 1)
 				local b1 = mod_data_pattern[data+1]
 				local b2 = mod_data_pattern[data+2]
 				local b3 = mod_data_pattern[data+3]
@@ -175,33 +253,54 @@ function interpolate(sample, pos, volume)
     return a*(1-frac) + b*frac
 end
 
+function lowpass(arg1, arg2, arg3)
+	local RC = 1.0 / (arg2 * 2 * math.pi)
+	local dt = 1.0 / arg3
+	local alpha = dt / (RC + dt)
+	local out = 0
+	out = out + alpha * (arg1 - out)
+	return out
+end
+
 function editor.channelPlay(qChannels)
 	if sourceSound and sourceSound:getFreeBufferCount() > 0 then
 		local buffer = {}
 		local chunkSize = 1024
 		for i = 1, chunkSize do
-			local mix = 0
+			local mixLeft = 0
+			local mixRight = 0
 			for channel = 0, qChannels-1 do
 				local currentChannel = channels[channel+1]
 				if currentChannel then
 					local sample = mod_sampleDecoded[currentChannel[1]]
 					if sample then
 						local pitch = currentChannel[2]
+						--pitch = math.max(113, math.min(856, pitch))
 						local volume = currentChannel[3]
 						local pos = currentChannel[4]
 	
 						if pos < #sample then
 							local frequency = 7093789.2 / (pitch * 2)
 							local advance = frequency/sampleRate
-							if type_interpolate == "linear"then
-								mix = mix+interpolate(sample, pos, 1)
+							advance = math.min(4.0, advance)
+							--local advance = localNoteOffset/pitch
+							if type_interpolate == "linear" then
+								if channel == 0 or channel == 3 then
+									mixLeft = mixLeft+interpolate(sample, pos, 1)
+								elseif channel == 1 or channel == 2 then
+									mixRight = mixRight+interpolate(sample, pos, 1)
+								end
 							elseif type_interpolate == "none" then
-								mix = mix+sample[math.floor(pos)]*(volume/64)
+								if channel == 0 or channel == 2 or channel == 4 or channel == 6 then
+									mixLeft = mixLeft+sample[math.floor(pos)]*volume
+								elseif channel == 1 or channel == 3 or channel == 5 or channel == 7 then
+									mixRight = mixRight+sample[math.floor(pos)]*volume							end
 							end
 							currentChannel[4] = pos+advance
 						else
 							local loop = (mod_samples__info[(currentChannel[1]-1)*6+5][1]*256 + mod_samples__info[(currentChannel[1]-1)*6+5][2])*2
-							if loop > 0 then
+							local length = (mod_samples__info[(currentChannel[1]-1)*6+6][1]*256 + mod_samples__info[(currentChannel[1]-1)*6+6][2])*2
+							if length > 0 and loop > 0 then
 								currentChannel[4] = loop
 							else
 								currentChannel[1] = 0
@@ -212,9 +311,11 @@ function editor.channelPlay(qChannels)
 					end
 				end
 			end
-			mix = mix*0.25
-			buffer[i] = mix
+			mixLeft = mixLeft
+			mixRight = mixRight
+			buffer[i] = {mixLeft, mixRight}
 		end
+		biquadFilter:process(buffer)
 		--print(buffer[1], buffer[chunkSize])
 		editor.sendBuffer(buffer, chunkSize)
 	end
@@ -229,10 +330,17 @@ function editor.init()
 end
 
 function editor.keyMap(key, sampleNum, channels)
-	
 	for i = 0, 32 do
 		if key == keyMap[i] then
 			--editor.REALTIME_PLAY_SAMPLE(keyMap[key], sampleNum, 44010, 1)
+			if editor_mod and not fileSearch then
+				local data = (patternPosition-1)*(numChannels*4) + selectedChannel*4
+				mod_data_pattern[data+3] = bit.lshift(bit.band(sampleNum, 0x0F), 4)
+				mod_data_pattern[data+1] = bit.band(sampleNum, 0xF0)
+				mod_data_pattern[data+1] = bit.rshift(bit.band(keyMap[key], 0xF00), 8)
+				mod_data_pattern[data+2] = bit.band(keyMap[key], 0xFF)
+				patternPosition = patternPosition+1
+			end
 			channels[increment][1] = sampleNum
 			channels[increment][2] = keyMap[key]
 			channels[increment][3] = 64

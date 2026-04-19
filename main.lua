@@ -12,9 +12,12 @@ local editor = require("lua/core/editor")
 local effects = require("lua/core/effects")
 local logo = require("lua/core/logo")
 
+fileSearch = true
+editor_mod = false
 loaded_mod = false
 local auto_play = false
 
+tickets = 0
 ticksPerLine = 6
 bpm = 125
 
@@ -63,18 +66,6 @@ t=0
 local zoomEditor = 1
 local showSample = false
 
-function lowpass(arg1, arg2, arg3)
-	local RC = 1.0 / (arg2 * 2 * math.pi)
-	local dt = 1.0 / arg3
-	local alpha = dt / (RC + dt)
-	local out = {}
-	out[1] = arg1[1]
-	for i = 2, #arg1 do
-		out[i] = out[i-1] + alpha * (arg1[i] - out[i-1])
-	end
-	return out
-end
-
 function sampleDecode(data, amplitudex)
     local out = {}
     for i = 1, #data do
@@ -111,7 +102,8 @@ function love.load()
 	editor.noteOffset(856)
 	editor.localNoteOffset(offsetKey)
 	love.graphics.setFont(font)
-	editor.sendBuffer({0}, 1)
+	editor.sendBuffer({{0, 0}}, 1)
+	editor.initEngine(4900, 0.707)
 end
 
 local beatTimer = 0
@@ -138,10 +130,10 @@ function love.update(dt)
 			local length = mod_sample_data[i] or 0
 			if length ~= 0 then
 				mod_sampleDecoded[i] = sampleDecode(mod_sample_data[i])
-				mod_sampleDecoded[i] = lowpass(mod_sampleDecoded[i], 3300, sampleRate)
 			end
 		end
 		oscilationWave(screenWidth, screenHeight)
+		fileSearch = false
 		loaded_mod = true
 		selected_file = ""
 	end
@@ -163,38 +155,58 @@ function love.update(dt)
 	if loaded_mod and auto_play then
 		beatTimer = beatTimer + dt
 		local tickTime = 2.5 / bpm
-		local lineTime = ticksPerLine * tickTime
-		while beatTimer >= lineTime do
-			beatTimer = beatTimer - lineTime
-			if patternPosition >= 64*(mod_song__position[currentPattern]+1)+1 then
-				currentPattern = currentPattern+1
-				patternPosition = 64*(mod_song__position[currentPattern])+1
-			end
-			for channel=0, numChannels-1 do
-				local base = (patternPosition-1)*numChannels*4 + channel*4
-				--print(base, mod_data_pattern[base+1])
-				--print(currentPattern, patternPosition, 64*(mod_song__position[currentPattern]+1)+1, "realPosition Pattern: " .. mod_song__position[currentPattern])
-				local b1 = mod_data_pattern[base+1]
-				local b2 = mod_data_pattern[base+2]
-				local b3 = mod_data_pattern[base+3]
-				local b4 = mod_data_pattern[base+4]
-				local period = bit.bor(bit.lshift(bit.band(b1, 0x0F), 8), b2)
-				periodTone = period
-				local instrument = bit.bor(bit.band(b1, 0xF0), bit.rshift(bit.band(b3, 0xF0), 4))
-				local effect = bit.band(b3, 0x0F)
-				local param = b4
-				effects.applyPreEffects(effect, param)
-				--print(toBinary(b1, 8), toBinary(b2, 8), toBinary(b3, 8), toBinary(period, 12))
-				--print("ticks: " .. ticksPerLine .. " bpm: " .. bpm)
-				if period > 0 and instrument > 0 then
-					channels[channel+1][1] = instrument
-					channels[channel+1][2] = period
-					channels[channel+1][3] = 64
-					channels[channel+1][4] = 1
+		while beatTimer >= tickTime do
+			beatTimer = beatTimer - tickTime
+			if tickets == 0 then
+				if patternPosition >= 64*(mod_song__position[currentPattern]+1)+1 then
+					currentPattern = currentPattern+1
+					patternPosition = 64*(mod_song__position[currentPattern])+1
 				end
-				effects.applyPosEffects(effect, param, channel+1)
+				for channel=0, numChannels-1 do
+					local base = (patternPosition-1)*numChannels*4 + channel*4
+					--print(base, mod_data_pattern[base+1])
+					--print(currentPattern, patternPosition, 64*(mod_song__position[currentPattern]+1)+1, "realPosition Pattern: " .. mod_song__position[currentPattern])
+					local b1 = mod_data_pattern[base+1]
+					local b2 = mod_data_pattern[base+2]
+					local b3 = mod_data_pattern[base+3]
+					local b4 = mod_data_pattern[base+4]
+					local period = bit.bor(bit.lshift(bit.band(b1, 0x0F), 8), b2)
+					periodTone = period
+					local instrument = bit.bor(bit.band(b1, 0xF0), bit.rshift(bit.band(b3, 0xF0), 4))
+					local effect = bit.band(b3, 0x0F)
+					local param = b4
+					effects.applyPreEffects(effect, param, channel+1)
+					--print(toBinary(b1, 8), toBinary(b2, 8), toBinary(b3, 8), toBinary(period, 12))
+					--print("ticks: " .. ticksPerLine .. " bpm: " .. bpm)
+					if period > 0 and instrument > 0 then
+						if effect == 0x3 then
+							if param > 0 then
+								channels[channel+1][6] = param
+							end
+							channels[channel+1][5] = period
+						else
+							channels[channel+1][1] = instrument
+							channels[channel+1][2] = period
+							channels[channel+1][3] = 1
+							channels[channel+1][4] = 1
+						end
+					end
+				end
+			else
+				for channel=0, numChannels-1 do
+					local base = (patternPosition-1)*numChannels*4 + channel*4
+					local b3 = mod_data_pattern[base+3]
+					local b4 = mod_data_pattern[base+4]
+					local effect = bit.band(b3, 0x0F)
+					local param = b4
+					effects.applyPosEffects(effect, param, channel+1)
+				end
 			end
-			patternPosition = patternPosition + 1
+			tickets = tickets + 1
+			if tickets == ticksPerLine then
+				patternPosition = patternPosition + 1
+				tickets = 0
+			end
 		end
 	end
 	editor.channelPlay(numChannels)
@@ -207,11 +219,15 @@ function love.keypressed(key, scancode, isrepeat)
 	editor.keyMap(key, currentSample, channels)
 
    	if key == "escape" then
-		collectgarbage()
-      		love.event.quit()
+		if fileSearch == false then
+			fileSearch = true
+		else
+			collectgarbage()
+      			love.event.quit()
+		end
    	end
 
-	if key == "space" then
+	if key == "rctrl" then
 		if auto_play then
 			auto_play = false
 			for i = 1, numChannels do
@@ -221,13 +237,29 @@ function love.keypressed(key, scancode, isrepeat)
 			auto_play = true
 		end
 	end
+	
+	if key == "space" then
+		if editor_mod then
+			editor_mod = false
+		else
+			editor_mod = true
+		end
+	end
 
 	if key == "down" then
-		filePicker.down()
+		if fileSearch then
+			filePicker.down()
+		else
+			patternPosition = patternPosition+1
+		end
 	end
 
 	if key == "up" then
-		filePicker.up()
+		if fileSearch then
+			filePicker.up()
+		else
+			patternPosition = patternPosition-1
+		end
 	end
 
 	if key == "return" then
@@ -296,12 +328,20 @@ end
 
 function love.wheelmoved(x, y)
 	if y > 0 then
-		zoomEditor = zoomEditor*2
-		oscilationWave(screenWidth, screenHeight)
+		if showSample then
+			zoomEditor = zoomEditor*2
+			oscilationWave(screenWidth, screenHeight)
+		else
+			patternPosition = patternPosition - 1
+		end
 	end
 	if y < 0 then
-		zoomEditor = zoomEditor/2
-		oscilationWave(screenWidth, screenHeight)
+		if showSample then
+			zoomEditor = zoomEditor/2
+			oscilationWave(screenWidth, screenHeight)
+		else
+			patternPosition = patternPosition + 1
+		end
 	end
 end
 
