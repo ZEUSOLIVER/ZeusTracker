@@ -1,5 +1,6 @@
 local editor = {}
 local selectedChannel = 0
+local barPosition = 0
 increment = 1
 local type_interpolate = "none"
 local noteOffset = 0
@@ -70,7 +71,15 @@ local note = {
 	[214] = "C-5",
 	[202] = "C#5",
 	[190] = "D-5",
-	[180] = "D#5"
+	[180] = "D#5",
+	[170] = "E-5",
+	[160] = "F-5",
+	[151] = "F#5",
+	[143] = "G-5",
+	[135] = "G#5",
+	[127] = "A-5",
+	[120] = "A#5",
+	[113] = "B-5"
 }
 
 queuedCounter = 1
@@ -188,10 +197,10 @@ function editor.drawPattern(q)
 	for y = 0, 19 do
 		for x = 0, numChannels-1 do
 			local data = (y+patternPosition-1)*(numChannels*4) + x*4
-			if y+patternPosition-1 < 64*(mod_song__position[currentPattern]+1)+1 then
-				if y == 0 and editor_mod then
+			if y+patternPosition-1 < 64*(mod_song__position[currentPattern]+1) then
+				if y == barPosition and editor_mod then
 					love.graphics.setColor(1, 0, 0, 0.1)
-					love.graphics.rectangle("fill", gridPositionX, gridPositionY, gridX, 20)
+					love.graphics.rectangle("fill", gridPositionX, gridPositionY+barPosition*20, gridX, 20)
 				end
 				love.graphics.setColor(1, 1, 1)
 				local b1 = mod_data_pattern[data+1]
@@ -257,7 +266,7 @@ end
 function editor.channelPlay(qChannels)
 	if sourceSound and sourceSound:getFreeBufferCount() > 0 then
 		local buffer = {}
-		local chunkSize = 1024
+		local chunkSize = 800
 		for i = 1, chunkSize do
 			local mixLeft = 0
 			local mixRight = 0
@@ -277,9 +286,9 @@ function editor.channelPlay(qChannels)
 							advance = math.min(4.0, advance)
 							--local advance = localNoteOffset/pitch
 							if type_interpolate == "linear" then
-								if channel == 0 or channel == 3 then
+								if channel == 0 or channel == 2 or channel == 4 or channel == 6 then
 									mixLeft = mixLeft+interpolate(sample, pos, 1)
-								elseif channel == 1 or channel == 2 then
+								elseif channel == 1 or channel == 3 or channel == 5 or channel == 7 then
 									mixRight = mixRight+interpolate(sample, pos, 1)
 								end
 							elseif type_interpolate == "none" then
@@ -305,6 +314,7 @@ function editor.channelPlay(qChannels)
 			end
 			mixLeft = mixLeft/2
 			mixRight = mixRight/2
+			--periodTone = mixLeft+mixRight
 			buffer[i] = {mixLeft, mixRight}
 		end
 		biquadFilter:process(buffer)
@@ -321,17 +331,45 @@ function editor.init()
 	lastNote = {}
 end
 
+function editor.resetBar()
+	barPosition = 0
+end
+
+function editor.barDown()
+	barPosition = math.min(19, barPosition + 1)
+end
+
+function editor.barUp()
+	barPosition = math.max(0, barPosition - 1)
+end
+
+function editor.left()
+	selectedChannel = math.max(0, selectedChannel - 1)
+end
+function editor.right()
+	selectedChannel = selectedChannel + 1
+end
+
 function editor.keyMap(key, sampleNum, channels)
 	for i = 0, 32 do
+		if key == "delete" then
+			if editor_mod and not fileSearch then
+				local data = (barPosition+patternPosition-1)*(numChannels*4) + selectedChannel*4
+				mod_data_pattern[data+1] = 0
+				mod_data_pattern[data+2] = 0
+				mod_data_pattern[data+3] = 0
+				mod_data_pattern[data+4] = 0
+			end
+		end
 		if key == keyMap[i] then
 			--editor.REALTIME_PLAY_SAMPLE(keyMap[key], sampleNum, 44010, 1)
 			if editor_mod and not fileSearch then
-				local data = (patternPosition-1)*(numChannels*4) + selectedChannel*4
-				mod_data_pattern[data+3] = bit.lshift(bit.band(sampleNum, 0x0F), 4)
+				local data = (barPosition+patternPosition-1)*(numChannels*4) + selectedChannel*4
+				mod_data_pattern[data+3] = bit.bor(bit.lshift(bit.band(sampleNum, 0x0F), 4), bit.band(mod_data_pattern[data+3], 0x0F))
 				mod_data_pattern[data+1] = bit.band(sampleNum, 0xF0)
 				mod_data_pattern[data+1] = bit.rshift(bit.band(keyMap[key], 0xF00), 8)
 				mod_data_pattern[data+2] = bit.band(keyMap[key], 0xFF)
-				patternPosition = patternPosition+1
+				barPosition = barPosition+1
 			end
 			channels[increment][1] = sampleNum
 			channels[increment][2] = keyMap[key]

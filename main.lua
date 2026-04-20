@@ -134,6 +134,7 @@ function love.update(dt)
 		end
 		oscilationWave(screenWidth, screenHeight)
 		fileSearch = false
+		tickets = 0
 		loaded_mod = true
 		selected_file = ""
 	end
@@ -171,7 +172,6 @@ function love.update(dt)
 					local b3 = mod_data_pattern[base+3]
 					local b4 = mod_data_pattern[base+4]
 					local period = bit.bor(bit.lshift(bit.band(b1, 0x0F), 8), b2)
-					periodTone = period
 					local instrument = bit.bor(bit.band(b1, 0xF0), bit.rshift(bit.band(b3, 0xF0), 4))
 					local effect = bit.band(b3, 0x0F)
 					local param = b4
@@ -204,7 +204,7 @@ function love.update(dt)
 				end
 			end
 			tickets = tickets + 1
-			if tickets == ticksPerLine then
+			if tickets >= ticksPerLine then
 				patternPosition = patternPosition + 1
 				tickets = 0
 			end
@@ -212,7 +212,8 @@ function love.update(dt)
 	end
 	editor.channelPlay(numChannels)
 	t=t+1
-	logo.update(dt/2+periodTone/2048)
+	--logo.update(dt/2+math.min(1, (math.abs(periodTone)/2020)))
+	logo.update(dt/2)
 end
 
 
@@ -245,13 +246,22 @@ function love.keypressed(key, scancode, isrepeat)
 		else
 			editor_mod = true
 		end
+		auto_play = false
+		for i = 1, numChannels do
+			channels[i][1] = 0
+		end
+		--editor.resetBar()
 	end
 
 	if key == "down" then
 		if fileSearch then
 			filePicker.down()
 		else
-			patternPosition = patternPosition+1
+			if editor_mod then
+				editor.barDown()
+			else
+				patternPosition = patternPosition+1
+			end
 		end
 	end
 
@@ -259,7 +269,11 @@ function love.keypressed(key, scancode, isrepeat)
 		if fileSearch then
 			filePicker.up()
 		else
-			patternPosition = patternPosition-1
+			if editor_mod then
+				editor.barUp()
+			else
+				patternPosition = patternPosition-1
+			end
 		end
 	end
 
@@ -306,13 +320,21 @@ function love.keypressed(key, scancode, isrepeat)
 	end
 
 	if key == "right" then
-		currentSample = math.min(currentSample + 1, 31)
-		oscilationWave(screenWidth, screenHeight)
+		if editor_mod then
+			editor.right()
+		else
+			currentSample = math.min(currentSample + 1, 31)
+			oscilationWave(screenWidth, screenHeight)
+		end
 	end
 
 	if key == "left" then
-		currentSample = math.max(currentSample - 1, 1)
-		oscilationWave(screenWidth, screenHeight)
+		if editor_mod then
+			editor.left()
+		else
+			currentSample = math.max(currentSample - 1, 1)
+			oscilationWave(screenWidth, screenHeight)
+		end
 	end
 end
 
@@ -383,6 +405,9 @@ function love.draw()
 			love.graphics.print(mod_samples__info[(i-1)*6+1],200+screenWidth/2,(i-1)*14+20)
 		end
 		editor.drawPattern(32)
+		for i = 1, numChannels do
+			channel.specView(i, 20+(i-1)*100, 180)
+		end
 	end
 	if showSample then
 		love.graphics.setColor(10/255,10/255,10/255)

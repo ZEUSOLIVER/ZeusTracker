@@ -103,6 +103,9 @@ function effects.applyPreEffects(effect, param, channel)
 	if effect == 0xF then
 		effects.ticksAndBpm(param)
 	end
+	if effect == 0xC then
+		effects.volume(param, channel)
+	end
 	if effect == 0x9 then
 		effects.samplePosition(param, channel)
 	end
