@@ -79,9 +79,6 @@ function effects.applyPosEffects(effect, param, channel)
 	if effect == 0x0 and param > 0 then
 		--effects.volume(param)
 	end
-	if effect == 0xC then
-		effects.volume(param, channel)
-	end
 	if effect == 0x1 then
 		effects.portUp(param, channel)
 	end

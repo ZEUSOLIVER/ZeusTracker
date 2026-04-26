@@ -38,7 +38,12 @@ mod_sampleDecoded2 = {}
 selected_file = ""
 canvas = love.graphics.newCanvas( )
 canvas:setFilter("linear", "nearest")
+canvasPattern = love.graphics.newCanvas( )
+canvasPattern:setFilter("linear", "nearest")
+canvasUI = love.graphics.newCanvas( )
+canvasUI:setFilter("linear", "nearest")
 
+renderPattern = false
 local modFormat = "M.K."
 
 local currentSample = 1
@@ -133,6 +138,8 @@ function love.update(dt)
 			end
 		end
 		oscilationWave(screenWidth, screenHeight)
+		incCounter(0)
+		renderPattern = true
 		fileSearch = false
 		tickets = 0
 		loaded_mod = true
@@ -162,6 +169,7 @@ function love.update(dt)
 				if patternPosition >= 64*(mod_song__position[currentPattern]+1)+1 then
 					currentPattern = currentPattern+1
 					patternPosition = 64*(mod_song__position[currentPattern])+1
+					incCounter(0)
 				end
 				for channel=0, numChannels-1 do
 					local base = (patternPosition-1)*numChannels*4 + channel*4
@@ -177,7 +185,7 @@ function love.update(dt)
 					local param = b4
 					--print(toBinary(b1, 8), toBinary(b2, 8), toBinary(b3, 8), toBinary(period, 12))
 					--print("ticks: " .. ticksPerLine .. " bpm: " .. bpm)
-					if period > 0 and instrument > 0 then
+					if period > 0 then
 						if effect == 0x3 then
 							if param > 0 then
 								channels[channel+1][6] = param
@@ -185,14 +193,19 @@ function love.update(dt)
 							end
 							channels[channel+1][5] = period
 						else
-							channels[channel+1][1] = instrument
-							channels[channel+1][2] = period
-							channels[channel+1][3] = 1
-							channels[channel+1][4] = 1
+							if instrument > 0 then
+								channels[channel+1][1] = instrument
+								channels[channel+1][2] = period
+								channels[channel+1][3] = 1
+								channels[channel+1][4] = 1
+								channels[channel+1][8] = (mod_samples__info[(channels[channel+1][1]-1)*6+5][1]*256 + mod_samples__info[(channels[channel+1][1]-1)*6+5][2])*2
+								channels[channel+1][9] = (mod_samples__info[(channels[channel+1][1]-1)*6+6][1]*256 + mod_samples__info[(channels[channel+1][1]-1)*6+6][2])*2
+							end
 						end
 					end
 					effects.applyPreEffects(effect, param, channel+1)
 				end
+				renderPattern = true
 			else
 				for channel=0, numChannels-1 do
 					local base = (patternPosition-1)*numChannels*4 + channel*4
@@ -206,6 +219,7 @@ function love.update(dt)
 			tickets = tickets + 1
 			if tickets >= ticksPerLine then
 				patternPosition = patternPosition + 1
+				incCounter(1)
 				tickets = 0
 			end
 		end
@@ -237,7 +251,9 @@ function love.keypressed(key, scancode, isrepeat)
 			end
 		else
 			auto_play = true
+			editor.resetBar()
 		end
+		renderPattern = true
 	end
 	
 	if key == "space" then
@@ -251,6 +267,7 @@ function love.keypressed(key, scancode, isrepeat)
 			channels[i][1] = 0
 		end
 		--editor.resetBar()
+		renderPattern = true
 	end
 
 	if key == "down" then
@@ -262,6 +279,7 @@ function love.keypressed(key, scancode, isrepeat)
 			else
 				patternPosition = patternPosition+1
 			end
+			renderPattern = true
 		end
 	end
 
@@ -274,6 +292,7 @@ function love.keypressed(key, scancode, isrepeat)
 			else
 				patternPosition = patternPosition-1
 			end
+			renderPattern = true
 		end
 	end
 
@@ -356,6 +375,7 @@ function love.wheelmoved(x, y)
 			oscilationWave(screenWidth, screenHeight)
 		else
 			patternPosition = patternPosition - 1
+			renderPattern = true
 		end
 	end
 	if y < 0 then
@@ -364,6 +384,7 @@ function love.wheelmoved(x, y)
 			oscilationWave(screenWidth, screenHeight)
 		else
 			patternPosition = patternPosition + 1
+			renderPattern = true
 		end
 	end
 end
@@ -379,8 +400,11 @@ function love.draw()
 	local z = -15
 	local angle_x = t/40
 	local angle_y = 2
+	local ys = 0
 	if distance < 120 then
 		distance = t/10
+	else
+		ys = -80
 	end
 	logo.ASCIIZ(x, y, z, angle_x, angle_y, 500, distance)
 	logo.ASCIIE(x, y, z, angle_x, angle_y, 500, distance)
@@ -404,10 +428,17 @@ function love.draw()
 		for i=1, 11 do
 			love.graphics.print(mod_samples__info[(i-1)*6+1],200+screenWidth/2,(i-1)*14+20)
 		end
-		editor.drawPattern(32)
-		for i = 1, numChannels do
-			channel.specView(i, 20+(i-1)*100, 180)
+		if renderPattern then
+			love.graphics.setCanvas(canvasPattern)
+			love.graphics.clear(0, 0, 0, 0)
+			renderPattern = false
+			editor.drawPattern(32)
+			love.graphics.setCanvas()
 		end
+		for i = 1, numChannels do
+			channel.specView(i, 20+(i-1)*100, 200)
+		end
+		love.graphics.draw(canvasPattern, 0, 0)
 	end
 	if showSample then
 		love.graphics.setColor(10/255,10/255,10/255)
@@ -434,4 +465,8 @@ function love.draw()
 		love.graphics.print("Length: " .. sampleLength, 20, screenHeight*2-40)
 	end
 	love.graphics.print("CurrentPattern: " .. currentPattern, 200, 0)
+	love.graphics.print("Position: " .. patternPosition, 400, 0)
+	love.graphics.print("ModPosition: " .. (mod_song__position[currentPattern+1] or 0), 550, 0)
+	love.graphics.print("BPM: " .. bpm, 200, 100)
+	love.graphics.print("Tickets: " .. ticksPerLine, 400, 100)
 end

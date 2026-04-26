@@ -29,13 +29,13 @@ function mod.load(path)
 	mod_underfined[1] = data:byte(952)
 	mod_song__position = {data:byte(953, 1080)}
 	mod_underfined2 = data:sub(1081, 1084) --
-	if mod_underfined2 == "M.K." then
+	if mod_underfined2 == "M.K." or mod_underfined2 == "4CHN" or mod_underfined2 == "FLT4" then
 		signature_value = 1024
 		numChannels = 4
 	elseif mod_underfined2 == "6CHN" then
 		signature_value = 1536
 		numChannels = 6
-	elseif mod_underfined2 == "8CHN" or mod_underfined2 == "FLT8" then
+	elseif mod_underfined2 == "8CHN" or mod_underfined2 == "FLT8" or mod_underfined2 == "CD81"then
 		signature_value = 2048
 		numChannels = 8
 	elseif mod_underfined2 == "16CH" then

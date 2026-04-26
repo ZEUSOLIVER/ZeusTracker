@@ -1,7 +1,7 @@
 local editor = {}
+local counterY = 0
 local selectedChannel = 0
 local barPosition = 0
-increment = 1
 local type_interpolate = "none"
 local noteOffset = 0
 local localNoteOffset = 0
@@ -82,7 +82,7 @@ local note = {
 	[113] = "B-5"
 }
 
-queuedCounter = 1
+local yPos = 220
 
 patternPositionY = 0
 
@@ -167,7 +167,7 @@ function editor.sendBuffer(buffer, chunkSize)
 	if not sourceSound then
 		editor.newQueueableSource(sampleRate)
 	end
-    	for i = 0, chunkSize-1 do
+    	for i = 0, chunkSize-1, 1 do
 	    sd:setSample(i, 1, buffer[i+1][1]/256)
 	    sd:setSample(i, 2, buffer[i+1][2]/256)
     	end
@@ -185,16 +185,17 @@ end
 
 function editor.drawPattern(q)
 	local gridPositionX = 20
-	local gridPositionY = 180
-	local gridX = 100*numChannels 
-	local gridY = 400
+	local gridPositionY = 220
+	local gridX = 100*numChannels
+	local gridY = 360
 	for gx = 0, gridX, 100 do
 		love.graphics.line(gx+gridPositionX, gridPositionY, gx+gridPositionX, gridY+gridPositionY)
 	end
-	for gy = 0, gridY, 20 do
+	--[[for gy = 0, gridY, 360 do
 		love.graphics.line(gridPositionX, gy+gridPositionY, gridX+gridPositionX, gy+gridPositionY)
-	end
-	for y = 0, 19 do
+	end]]
+	--yPos = yPos*patternPosition
+	for y = 0, 17 do
 		for x = 0, numChannels-1 do
 			local data = (y+patternPosition-1)*(numChannels*4) + x*4
 			if y+patternPosition-1 < 64*(mod_song__position[currentPattern]+1) then
@@ -219,12 +220,12 @@ function editor.drawPattern(q)
 				if noteK ~= "---" then
 					love.graphics.setColor(0.5, 0.5, 1)
 				end 
-				love.graphics.print(noteK, 20+x*100, 180+y*20)
+				love.graphics.print(noteK, 20+x*100, yPos+y*20)
 				love.graphics.setColor(1, 1, 1)
 				if instrument ~= 0 then
 					love.graphics.setColor(0.4, 1, 0.4)
 				end
-				love.graphics.print((instrument ~= 0) and string.format("%02X", instrument) or "--", 55+x*100, 180+y*20)
+				love.graphics.print((instrument ~= 0) and string.format("%02X", instrument) or "--", 55+x*100, yPos+y*20)
 				love.graphics.setColor(1, 1, 1)
 				if effect == 0xF then
 					love.graphics.setColor(1, 1, 0)
@@ -235,11 +236,17 @@ function editor.drawPattern(q)
 				if effect == 0xD then
 					love.graphics.setColor(0, 1, 1)
 				end
-				love.graphics.print((effect ~= 0) and string.format("%X", effect) or "-", 80+x*100, 180+y*20)
-				love.graphics.print((effect ~= 0) and string.format("%02X", param) or "--", 90+x*100, 180+y*20)
+				love.graphics.print((effect ~= 0) and string.format("%X", effect) or "-", 80+x*100, yPos+y*20)
+				love.graphics.print((effect ~= 0) and string.format("%02X", param) or "--", 90+x*100, yPos+y*20)
+				love.graphics.setColor(0.5, 0.5, 0.5)
+				love.graphics.print(y+counterY, 0, yPos+y*20)
 			end
 		end
 	end
+end
+
+function incCounter(num)
+	counterY = (counterY + 1)*num
 end
 
 function interpolate(sample, pos, volume)
@@ -279,8 +286,11 @@ function editor.channelPlay(qChannels)
 						--pitch = math.max(113, math.min(856, pitch))
 						local volume = currentChannel[3]
 						local pos = currentChannel[4]
-	
-						if pos < #sample then
+						local loop = currentChannel[8]
+						local length = currentChannel[9]
+						local lengthPlay = (loop > 0) and loop+length or #sample
+
+						if pos < lengthPlay then
 							local frequency = 7093789.2 / (pitch * 2)
 							local advance = frequency/sampleRate
 							advance = math.min(4.0, advance)
@@ -293,15 +303,18 @@ function editor.channelPlay(qChannels)
 								end
 							elseif type_interpolate == "none" then
 								if channel == 0 or channel == 2 or channel == 4 or channel == 6 then
-									mixLeft = mixLeft+sample[math.floor(pos)]*volume
+									--local mixed = lowpass((sample[math.floor(pos)] or 0), 4000, sampleRate)
+									--mixLeft = mixLeft+mixed*volume
+									mixLeft = mixLeft+(sample[math.floor(pos)] or 0)*volume
 								elseif channel == 1 or channel == 3 or channel == 5 or channel == 7 then
-									mixRight = mixRight+sample[math.floor(pos)]*volume						end
+									--local mixed = lowpass((sample[math.floor(pos)] or 0), 4000, sampleRate)
+									--mixRight = mixRight+mixed*volume
+									mixRight = mixRight+(sample[math.floor(pos)] or 0)*volume
+end
 							end
 							currentChannel[4] = pos+advance
 						else
-							local loop = (mod_samples__info[(currentChannel[1]-1)*6+5][1]*256 + mod_samples__info[(currentChannel[1]-1)*6+5][2])*2
-							local length = (mod_samples__info[(currentChannel[1]-1)*6+6][1]*256 + mod_samples__info[(currentChannel[1]-1)*6+6][2])*2
-							if length > 0 and loop > 0 then
+							if loop > 0 then
 								currentChannel[4] = loop
 							else
 								currentChannel[1] = 0
@@ -312,8 +325,8 @@ function editor.channelPlay(qChannels)
 					end
 				end
 			end
-			mixLeft = mixLeft/2
-			mixRight = mixRight/2
+			mixLeft = mixLeft
+			mixRight = mixRight
 			--periodTone = mixLeft+mixRight
 			buffer[i] = {mixLeft, mixRight}
 		end
@@ -347,7 +360,7 @@ function editor.left()
 	selectedChannel = math.max(0, selectedChannel - 1)
 end
 function editor.right()
-	selectedChannel = selectedChannel + 1
+	selectedChannel = math.min(numChannels-1, selectedChannel + 1)
 end
 
 function editor.keyMap(key, sampleNum, channels)
@@ -360,6 +373,7 @@ function editor.keyMap(key, sampleNum, channels)
 				mod_data_pattern[data+3] = 0
 				mod_data_pattern[data+4] = 0
 			end
+			renderPattern = true
 		end
 		if key == keyMap[i] then
 			--editor.REALTIME_PLAY_SAMPLE(keyMap[key], sampleNum, 44010, 1)
@@ -371,15 +385,13 @@ function editor.keyMap(key, sampleNum, channels)
 				mod_data_pattern[data+2] = bit.band(keyMap[key], 0xFF)
 				barPosition = barPosition+1
 			end
-			channels[increment][1] = sampleNum
-			channels[increment][2] = keyMap[key]
-			channels[increment][3] = 1
-			channels[increment][4] = 1
-			if increment >= numChannels then
-				increment = increment + 1
-			else
-				increment = 1
-			end
+			channels[selectedChannel+1][1] = sampleNum
+			channels[selectedChannel+1][2] = keyMap[key]
+			channels[selectedChannel+1][3] = 1
+			channels[selectedChannel+1][4] = 1
+			channels[selectedChannel+1][8] = (mod_samples__info[(channels[selectedChannel+1][1]-1)*6+5][1]*256 + mod_samples__info[(channels[selectedChannel+1][1]-1)*6+5][2])*2
+			channels[selectedChannel+1][9] = (mod_samples__info[(channels[selectedChannel+1][1]-1)*6+6][1]*256 + mod_samples__info[(channels[selectedChannel+1][1]-1)*6+6][2])*2
+			renderPattern = true
 		end
 	end
 end

@@ -2,7 +2,7 @@ channel = {}
 
 function channel.init(range, channels)
 	for i=1, range do
-		channels[i] = {0, 1, 64, 1}
+		channels[i] = {0, 1, 64, 1, 0, 0, 0, 0, 0}
 	end
 end
 
@@ -22,6 +22,7 @@ function channel.specView(ch, x, y)
 		offsetY = volume*(sample[pos+i] or 0)
 	end
 	love.graphics.setColor(1, 1, 1)
+	love.graphics.print(ch, x+(ch-1), y-40)
 end
 
 return channel

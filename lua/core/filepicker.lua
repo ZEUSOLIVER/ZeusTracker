@@ -58,7 +58,7 @@ function filePicker.draw(t)
             		else
                 		love.graphics.setColor(1, 1, 1) -- branco
             		end
-            		love.graphics.print((modstable[i+y] ~= nil) and modstable[i+y] or "none", 20, 20 + p * 20)
+            		love.graphics.print((modstable[i+y] ~= nil) and modstable[i+y] or "none", 20, 0 + p * 20)
 			p = p+1
 		end
         end
