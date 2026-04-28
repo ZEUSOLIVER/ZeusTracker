@@ -284,7 +284,7 @@ function editor.channelPlay(qChannels)
 					if sample then
 						local pitch = currentChannel[2]
 						--pitch = math.max(113, math.min(856, pitch))
-						local volume = currentChannel[3]
+						local volume = (currentChannel[10]) and currentChannel[3] or 0
 						local pos = currentChannel[4]
 						local loop = currentChannel[8]
 						local length = currentChannel[9]

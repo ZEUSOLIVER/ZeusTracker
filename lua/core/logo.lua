@@ -280,6 +280,43 @@ function logo.draw(type, xp, yp, zp, x, y, scale, zoom, ret)
 		end
 	end
 	if type == "cube" then
+		--[[local vertices = {
+			TempCube[1].x, TempCube[1].y,
+			TempCube[2].x, TempCube[2].y,
+			TempCube[4].x, TempCube[4].y,
+			TempCube[4].x, TempCube[4].y,
+			TempCube[3].x, TempCube[3].y,
+			TempCube[2].x, TempCube[2].y,
+			TempCube[2].x, TempCube[2].y,
+			TempCube[6].x, TempCube[6].y,
+			TempCube[5].x, TempCube[5].y,
+			TempCube[2].x, TempCube[2].y,
+			TempCube[1].x, TempCube[1].y,
+			TempCube[5].x, TempCube[5].y,
+			TempCube[5].x, TempCube[5].y,
+			TempCube[8].x, TempCube[8].y,
+			TempCube[4].x, TempCube[4].y,
+			TempCube[4].x, TempCube[4].y,
+			TempCube[1].x, TempCube[1].y,
+			TempCube[5].x, TempCube[5].y,
+			TempCube[5].x, TempCube[5].y,
+			TempCube[6].x, TempCube[6].y,
+			TempCube[8].x, TempCube[8].y,
+			TempCube[7].x, TempCube[7].y,
+			TempCube[6].x, TempCube[6].y,
+			TempCube[6].x, TempCube[6].y,
+			TempCube[2].x, TempCube[2].y,
+			TempCube[3].x, TempCube[3].y,
+			TempCube[6].x, TempCube[6].y,
+			TempCube[7].x, TempCube[7].y,
+			TempCube[3].x, TempCube[3].y,
+			TempCube[3].x, TempCube[3].y,
+			TempCube[4].x, TempCube[4].y,
+			TempCube[8].x, TempCube[8].y,
+			TempCube[7].x, TempCube[7].y,
+			TempCube[3].x, TempCube[3].y
+		}]]
+		--love.graphics.polygon("line", vertices)
 		love.graphics.line(TempCube[1].x, TempCube[1].y, TempCube[2].x, TempCube[2].y)
 		love.graphics.line(TempCube[2].x, TempCube[2].y, TempCube[3].x, TempCube[3].y)
 		love.graphics.line(TempCube[3].x, TempCube[3].y, TempCube[4].x, TempCube[4].y)

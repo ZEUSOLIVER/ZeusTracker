@@ -91,13 +91,15 @@ function oscilationWave(screenWidth, screenHeight)
 	local wavePrecision = math.max(math.floor(zoomEditorT), 1)
 	print(wavePrecision)
 	love.graphics.setColor(0, 1, 180/255)
+	local lines = {}
 	for x=1, length-1, 1 do
-		if offsetplay < screenWidth then
-			love.graphics.line(20+offsetplay, 200+screenHeight+offsetAmplitude, 20+(x-1)*zoomEditorT+zoomEditorT, 200+screenHeight+mod_sampleDecoded[currentSample][x+1]/4)
-			offsetplay = (x-1)*zoomEditorT+zoomEditorT
-			offsetAmplitude = mod_sampleDecoded[currentSample][x+1]/4
+		if offsetplay >= screenWidth then
+			break
 		end
+		lines[(x-1)*2+1] = 20+(x-1)*zoomEditorT+zoomEditorT
+		lines[(x-1)*2+2] = 200+screenHeight+mod_sampleDecoded[currentSample][x+1]/4
 	end
+	if #lines > 0 then love.graphics.line(lines) end
 	love.graphics.setCanvas()
 end
 
@@ -365,6 +367,15 @@ function love.mousepressed(x, y, button, istouch, presses)
 			showSample = true
 		end
 		mouseSelectedColor = 255
+	end
+	for i = 0, numChannels-1 do
+		if x > 20+100*i and y > 160 and x < 120+100*i and y < 220 then
+			if channels[i+1][10] then
+				channels[i+1][10] = false
+			else
+				channels[i+1][10] = true
+			end
+		end
 	end
 end
 
