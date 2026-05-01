@@ -6,6 +6,7 @@ local type_interpolate = "none"
 local noteOffset = 0
 local localNoteOffset = 0
 local finetune = 0
+local currentPosition = 0
 local keyMap = {
 	["q"] = 428,
 	["w"] = 381,
@@ -236,16 +237,18 @@ function editor.drawPattern(q)
 				if effect == 0xD then
 					love.graphics.setColor(0, 1, 1)
 				end
+				--local varL = 0.5
+				local varL = (bit.band(y+counterY, 0x0F) == 0 or bit.band(y+counterY, 0x0F) == 4 or bit.band(y+counterY, 0x0F) == 8 or bit.band(y+counterY, 0x0F) == 12) and 1 or 0.5
 				love.graphics.print((effect ~= 0) and string.format("%X", effect) or "-", 80+x*100, yPos+y*20)
 				love.graphics.print((effect ~= 0) and string.format("%02X", param) or "--", 90+x*100, yPos+y*20)
-				love.graphics.setColor(0.5, 0.5, 0.5)
+				love.graphics.setColor(varL, varL, varL)
 				love.graphics.print(y+counterY, 0, yPos+y*20)
 			end
 		end
 	end
 end
 
-function incCounter(num)
+function editor.incCounter(num)
 	counterY = (counterY + 1)*num
 end
 
@@ -344,6 +347,26 @@ function editor.init()
 	lastNote = {}
 end
 
+function editor.resetPosition()
+	currentPosition = 0
+end
+
+function editor.incrementPosition()
+	currentPosition = currentPosition+1
+end
+
+function editor.getPosition()
+	return currentPosition
+end
+
+function editor.counterYUp()
+	counterY = counterY-1
+end
+
+function editor.counterYDown()
+	counterY = counterY+1
+end
+
 function editor.resetBar()
 	barPosition = 0
 end
@@ -361,6 +384,10 @@ function editor.left()
 end
 function editor.right()
 	selectedChannel = math.min(numChannels-1, selectedChannel + 1)
+end
+
+function editor.getSelectedChannel()
+	return selectedChannel
 end
 
 function editor.keyMap(key, sampleNum, channels)
