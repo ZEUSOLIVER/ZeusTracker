@@ -8,14 +8,14 @@ local channel = require("lua/core/channel")
 local ffi = require("ffi")
 local filePicker = require("lua/core/filepicker")
 local mod = require("lua/core/loadMod")
+--local effects = require("lua/core/effects")
 local editor = require("lua/core/editor")
-local effects = require("lua/core/effects")
 local logo = require("lua/core/logo")
 
 fileSearch = true
 editor_mod = false
 loaded_mod = false
-local auto_play = false
+auto_play = false
 
 tickets = 0
 ticksPerLine = 6
@@ -147,7 +147,6 @@ function toBinary(n, bits)
     return s
 end
 
-
 function love.update(dt)
 	if selected_file ~= "" then
 		editor.init()
@@ -185,72 +184,6 @@ function love.update(dt)
 		mouseSelected = ""
 	end
 
-	if loaded_mod and auto_play then
-		beatTimer = beatTimer + dt
-		local tickTime = 2.5 / bpm
-		while beatTimer >= tickTime do
-			beatTimer = beatTimer - tickTime
-			if tickets == 0 then
-				if patternPosition >= 64*(mod_song__position[currentPattern]+1)+1 then
-					editor.resetPosition()
-					currentPattern = currentPattern+1
-					patternPosition = 64*(mod_song__position[currentPattern])+1
-					editor.incCounter(0)
-				end
-				for channel=0, numChannels-1 do
-					local base = (patternPosition-1)*numChannels*4 + channel*4
-					--print(base, mod_data_pattern[base+1])
-					--print(currentPattern, patternPosition, 64*(mod_song__position[currentPattern]+1)+1, "realPosition Pattern: " .. mod_song__position[currentPattern])
-					local b1 = mod_data_pattern[base+1]
-					local b2 = mod_data_pattern[base+2]
-					local b3 = mod_data_pattern[base+3]
-					local b4 = mod_data_pattern[base+4]
-					local period = bit.bor(bit.lshift(bit.band(b1, 0x0F), 8), b2)
-					local instrument = bit.bor(bit.band(b1, 0xF0), bit.rshift(bit.band(b3, 0xF0), 4))
-					local effect = bit.band(b3, 0x0F)
-					local param = b4
-					--print(toBinary(b1, 8), toBinary(b2, 8), toBinary(b3, 8), toBinary(period, 12))
-					--print("ticks: " .. ticksPerLine .. " bpm: " .. bpm)
-					if period > 0 then
-						if effect == 0x3 then
-							if param > 0 then
-								channels[channel+1][6] = param
-								channels[channel+1][3] = 1
-							end
-							channels[channel+1][5] = period
-						else
-							if instrument > 0 then
-								channels[channel+1][1] = instrument
-								channels[channel+1][2] = period
-								channels[channel+1][3] = 1
-								channels[channel+1][4] = 1
-								channels[channel+1][8] = (mod_samples__info[(channels[channel+1][1]-1)*6+5][1]*256 + mod_samples__info[(channels[channel+1][1]-1)*6+5][2])*2
-								channels[channel+1][9] = (mod_samples__info[(channels[channel+1][1]-1)*6+6][1]*256 + mod_samples__info[(channels[channel+1][1]-1)*6+6][2])*2
-							end
-						end
-					end
-					effects.applyPreEffects(effect, param, channel+1)
-				end
-				editor.incrementPosition()
-				renderPattern = true
-			else
-				for channel=0, numChannels-1 do
-					local base = (patternPosition-1)*numChannels*4 + channel*4
-					local b3 = mod_data_pattern[base+3]
-					local b4 = mod_data_pattern[base+4]
-					local effect = bit.band(b3, 0x0F)
-					local param = b4
-					effects.applyPosEffects(effect, param, channel+1)
-				end
-			end
-			tickets = tickets + 1
-			if tickets >= ticksPerLine then
-				patternPosition = patternPosition + 1
-				editor.incCounter(1)
-				tickets = 0
-			end
-		end
-	end
 	editor.channelPlay(numChannels)
 	t=t+1
 	--logo.update(dt/2+math.min(1, (math.abs(periodTone)/2020)))

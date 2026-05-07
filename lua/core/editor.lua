@@ -1,5 +1,9 @@
 local editor = {}
-local counterY = 0
+
+local effects = require("lua/core/effects")
+
+local samplesUntilNextTick = 0
+counterY = 0
 local selectedChannel = 0
 local barPosition = 0
 local type_interpolate = "none"
@@ -273,11 +277,82 @@ function lowpass(arg1, arg2, arg3)
 	return out
 end
 
+function processTrackerTick()
+	if tickets == 0 then
+		if patternPosition >= 64*(mod_song__position[currentPattern]+1)+1 then
+			editor.resetPosition()
+			currentPattern = currentPattern+1
+			patternPosition = 64*(mod_song__position[currentPattern])+1
+			editor.incCounter(0)
+		end
+		for channel=0, numChannels-1 do
+			local base = (patternPosition-1)*numChannels*4 + channel*4
+			--print(base, mod_data_pattern[base+1])
+			--print(currentPattern, patternPosition, 64*(mod_song__position[currentPattern]+1)+1, "realPosition Pattern: " .. mod_song__position[currentPattern])
+			local b1 = mod_data_pattern[base+1]
+			local b2 = mod_data_pattern[base+2]
+			local b3 = mod_data_pattern[base+3]
+			local b4 = mod_data_pattern[base+4]
+			local period = bit.bor(bit.lshift(bit.band(b1, 0x0F), 8), b2)
+			local instrument = bit.bor(bit.band(b1, 0xF0), bit.rshift(bit.band(b3, 0xF0), 4))
+			local effect = bit.band(b3, 0x0F)
+			local param = b4
+			--print(toBinary(b1, 8), toBinary(b2, 8), toBinary(b3, 8), toBinary(period, 12))
+			--print("ticks: " .. ticksPerLine .. " bpm: " .. bpm)
+			if period > 0 then
+				if effect == 0x3 then
+					if param > 0 then
+						channels[channel+1][6] = param
+						channels[channel+1][3] = 1
+					end
+					channels[channel+1][5] = period
+				else
+					if instrument > 0 then
+						channels[channel+1][1] = instrument
+						channels[channel+1][2] = period
+						channels[channel+1][3] = 1
+						channels[channel+1][4] = 1
+						channels[channel+1][8] = (mod_samples__info[(channels[channel+1][1]-1)*6+5][1]*256 + mod_samples__info[(channels[channel+1][1]-1)*6+5][2])*2
+						channels[channel+1][9] = (mod_samples__info[(channels[channel+1][1]-1)*6+6][1]*256 + mod_samples__info[(channels[channel+1][1]-1)*6+6][2])*2
+					end
+				end
+			end
+			effects.applyPreEffects(effect, param, channel+1)
+		end
+		editor.incrementPosition()
+		renderPattern = true
+	else
+		for channel=0, numChannels-1 do
+			local base = (patternPosition-1)*numChannels*4 + channel*4
+			local b3 = mod_data_pattern[base+3]
+			local b4 = mod_data_pattern[base+4]
+			local effect = bit.band(b3, 0x0F)
+			local param = b4
+			effects.applyPosEffects(effect, param, channel+1)
+		end
+	end
+	tickets = tickets + 1
+	if tickets >= ticksPerLine then
+		patternPosition = patternPosition + 1
+		editor.incCounter(1)
+		tickets = 0
+	end
+end
+
 function editor.channelPlay(qChannels)
 	if sourceSound and sourceSound:getFreeBufferCount() > 0 then
 		local buffer = {}
-		local chunkSize = 800
+		local chunkSize = 1024
 		for i = 1, chunkSize do
+			if auto_play then
+				if samplesUntilNextTick <= 0 then
+					processTrackerTick()
+					local samplesPerTick = (sampleRate*2.5) / bpm
+					samplesUntilNextTick = samplesUntilNextTick + samplesPerTick
+				end
+				samplesUntilNextTick = samplesUntilNextTick - 1
+			end
+			
 			local mixLeft = 0
 			local mixRight = 0
 			for channel = 0, qChannels-1 do
