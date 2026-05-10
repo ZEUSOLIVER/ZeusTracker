@@ -234,12 +234,7 @@ function love.keypressed(key, scancode, isrepeat)
 		if fileSearch then
 			filePicker.down()
 		else
-			if editor_mod then
-				editor.barDown()
-			else
-				patternPosition = patternPosition+1
-				editor.counterYDown()
-			end
+			editor.barDown()
 			renderPattern = true
 		end
 	end
@@ -248,12 +243,7 @@ function love.keypressed(key, scancode, isrepeat)
 		if fileSearch then
 			filePicker.up()
 		else
-			if editor_mod then
-				editor.barUp()
-			else
-				patternPosition = patternPosition-1
-				editor.counterYUp()
-			end
+			editor.barUp()
 			renderPattern = true
 		end
 	end
@@ -301,20 +291,22 @@ function love.keypressed(key, scancode, isrepeat)
 	end
 
 	if key == "right" then
-		if editor_mod then
-			editor.right()
-		else
+		if showSample then
 			currentSample = math.min(currentSample + 1, 31)
 			oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
+		else
+			editor.right()
+			renderPattern = true
 		end
 	end
 
 	if key == "left" then
-		if editor_mod then
-			editor.left()
-		else
+		if showSample then
 			currentSample = math.max(currentSample - 1, 1)
 			oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
+		else
+			editor.left()
+			renderPattern = true
 		end
 	end
 end
@@ -345,9 +337,11 @@ function love.wheelmoved(x, y)
 			zoomEditor = zoomEditor*2
 			oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
 		else
-			patternPosition = patternPosition - 1
-			editor.counterYUp()
-			renderPattern = true
+			if patternPosition > 1 then
+				patternPosition = patternPosition - 1
+				editor.counterYUp()
+				renderPattern = true
+			end
 		end
 	end
 	if y < 0 then
@@ -422,8 +416,8 @@ function love.draw()
 		love.graphics.setColor(1, 1, 1)
 	end
 	love.graphics.print("CurrentPattern: " .. currentPattern, 200, 0)
-	love.graphics.print("Position: " .. editor.getPosition(), 400, 0)
-	love.graphics.print("ModPosition: " .. (mod_song__position[currentPattern+1] or 0), 550, 0)
+	--love.graphics.print("Position: " .. editor.getPosition(), 400, 0)
+	--love.graphics.print("ModPosition: " .. (mod_song__position[currentPattern+1] or 0), 550, 0)
 	love.graphics.print("BPM: " .. bpm, 200, 100)
 	love.graphics.print("Tickets: " .. ticksPerLine, 400, 100)
 end

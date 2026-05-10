@@ -3,6 +3,7 @@ local editor = {}
 local effects = require("lua/core/effects")
 
 local samplesUntilNextTick = 0
+local cursorPos = 1
 counterY = 0
 local selectedChannel = 0
 local barPosition = 0
@@ -46,6 +47,26 @@ local keyMap = {
 	["s"] = 808,
 	"q", "w", "e", "r", "t", "y", "u", "i", "o", "2", "3", "5", "6", "7", "9", "0",
 	"/", ";", ".", ",", "m", "n", "b", "v", "c", "x", "z", "j", "h", "g", "d", "s"
+}
+
+local numHex = {
+	["a"] = 10,
+	["b"] = 11,
+	["c"] = 12,
+	["d"] = 13,
+	["e"] = 14,
+	["f"] = 15,
+	["0"] = 0,
+	["1"] = 1,
+	["2"] = 2,
+	["3"] = 3,
+	["4"] = 4,
+	["5"] = 5,
+	["6"] = 6,
+	["7"] = 7,
+	["8"] = 8,
+	["9"] = 9,
+	"a", "b", "c", "d", "e", "f", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"
 }
 
 local note = {
@@ -193,6 +214,7 @@ function editor.drawPattern(q)
 	local gridPositionY = 220
 	local gridX = 100*numChannels
 	local gridY = 360
+
 	for gx = 0, gridX, 100 do
 		love.graphics.line(gx+gridPositionX, gridPositionY, gx+gridPositionX, gridY+gridPositionY)
 	end
@@ -207,6 +229,14 @@ function editor.drawPattern(q)
 				if y == barPosition and editor_mod then
 					love.graphics.setColor(1, 0, 0, 0.1)
 					love.graphics.rectangle("fill", gridPositionX, gridPositionY+barPosition*20, gridX, 20)
+				end
+				love.graphics.setColor(1, 0, 1, 0.01)
+				local length = 100/3
+				if cursorPos > 3 then
+
+					love.graphics.rectangle("fill", 24+(cursorPos+3)*10+selectedChannel*4*25, gridPositionY+barPosition*20, 10, 20)
+				else
+					love.graphics.rectangle("fill", 20+(cursorPos-1)*33+selectedChannel*4*25, gridPositionY+barPosition*20, (cursorPos == 3) and 10 or 20, 20)
 				end
 				love.graphics.setColor(1, 1, 1)
 				local b1 = mod_data_pattern[data+1]
@@ -230,7 +260,7 @@ function editor.drawPattern(q)
 				if instrument ~= 0 then
 					love.graphics.setColor(0.4, 1, 0.4)
 				end
-				love.graphics.print((instrument ~= 0) and string.format("%02X", instrument) or "--", 55+x*100, yPos+y*20)
+				love.graphics.print((instrument ~= 0) and string.format("%02X", instrument) or "--", 53+x*100, yPos+y*20)
 				love.graphics.setColor(1, 1, 1)
 				if effect == 0xF then
 					love.graphics.setColor(1, 1, 0)
@@ -243,8 +273,8 @@ function editor.drawPattern(q)
 				end
 				--local varL = 0.5
 				local varL = (bit.band(y+counterY, 0x0F) == 0 or bit.band(y+counterY, 0x0F) == 4 or bit.band(y+counterY, 0x0F) == 8 or bit.band(y+counterY, 0x0F) == 12) and 1 or 0.5
-				love.graphics.print((effect ~= 0) and string.format("%X", effect) or "-", 80+x*100, yPos+y*20)
-				love.graphics.print((effect ~= 0) and string.format("%02X", param) or "--", 90+x*100, yPos+y*20)
+				love.graphics.print((effect ~= 0) and string.format("%X", effect) or "-", 86+x*100, yPos+y*20)
+				love.graphics.print((effect ~= 0) and string.format("%02X", param) or "--", 95+x*100, yPos+y*20)
 				love.graphics.setColor(varL, varL, varL)
 				love.graphics.print(y+counterY, 0, yPos+y*20)
 			end
@@ -455,10 +485,25 @@ function editor.barUp()
 end
 
 function editor.left()
-	selectedChannel = math.max(0, selectedChannel - 1)
+	if cursorPos == 1 then
+		selectedChannel = math.max(0, selectedChannel - 1)
+		cursorPos = 6
+	end
+	cursorPos = math.max(1, cursorPos - 1)
+	print(cursorPos)
 end
 function editor.right()
-	selectedChannel = math.min(numChannels-1, selectedChannel + 1)
+	--[[local pos = 0
+	for i=1, numChannels do
+		if cursorPos < pos
+		selectedChannel = math.min(numChannels-1, selectedChannel + 1)
+	end]]
+	cursorPos = cursorPos + 1
+	if cursorPos == 6 then
+		selectedChannel = math.min(numChannels-1, selectedChannel + 1)
+		cursorPos = 1
+	end
+	print(cursorPos)
 end
 
 function editor.getSelectedChannel()
@@ -477,7 +522,20 @@ function editor.keyMap(key, sampleNum, channels)
 			end
 			renderPattern = true
 		end
-		if key == keyMap[i] then
+		if key == numHex[i] and editor_mod then
+			local base = (patternPosition+barPosition-1)*numChannels*4 + selectedChannel*4
+			if cursorPos == 3 then
+				mod_data_pattern[base+cursorPos] = bit.bor(bit.band(mod_data_pattern[base+cursorPos], 0xF0), numHex[key])
+			end
+			if cursorPos == 4 then
+				mod_data_pattern[base+4] = bit.bor(bit.lshift(numHex[key], 4), bit.band(mod_data_pattern[base+4], 0x0F))
+			end
+			if cursorPos == 5 then
+				mod_data_pattern[base+4] = bit.bor(numHex[key], bit.band(mod_data_pattern[base+4], 0xF0))
+			end
+			renderPattern = true
+		end
+		if key == keyMap[i] and cursorPos == 1 then
 			--editor.REALTIME_PLAY_SAMPLE(keyMap[key], sampleNum, 44010, 1)
 			if editor_mod and not fileSearch then
 				local data = (barPosition+patternPosition-1)*(numChannels*4) + selectedChannel*4
