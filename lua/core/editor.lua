@@ -485,7 +485,13 @@ function editor.resetBar()
 end
 
 function editor.barDown()
-	barPosition = math.min(19, barPosition + 1)
+	barPosition = math.min(17, barPosition + 1)
+	if barPosition >= 17 then
+		if 64-(currentPosition+barPosition) > 1 then
+			patternPosition = patternPosition + 1
+			counterY = counterY + 1
+		end
+	end
 end
 
 function editor.barUp()
