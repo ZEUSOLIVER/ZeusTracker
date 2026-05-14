@@ -309,10 +309,15 @@ end
 
 function processTrackerTick()
 	if tickets == 0 then
-		if patternPosition >= 64*(mod_song__position[currentPattern]+1)+1 then
+		if patternPosition >= 64*(mod_song__position[currentPattern]+1) then
 			editor.resetPosition()
 			currentPattern = currentPattern+1
-			patternPosition = 64*(mod_song__position[currentPattern])+1
+			if mod_song__position[currentPattern] == nil then
+				currentPattern = 1
+				patternPosition = 1
+			else
+				patternPosition = (64*(mod_song__position[currentPattern]) == 0) and 64*(mod_song__position[currentPattern])+1 or 64*(mod_song__position[currentPattern])
+			end
 			editor.incCounter(0)
 		end
 		for channel=0, numChannels-1 do
@@ -394,42 +399,45 @@ function editor.channelPlay(qChannels)
 						--pitch = math.max(113, math.min(856, pitch))
 						local volume = (currentChannel[10]) and currentChannel[3] or 0
 						local pos = currentChannel[4]
-						local loop = currentChannel[8]
-						local length = currentChannel[9]
-						local lengthPlay = (loop > 0) and loop+length or #sample
+						local srepeat = currentChannel[8]
+						local sreplen = currentChannel[9]
 
-						if pos < lengthPlay then
-							local frequency = 7093789.2 / (pitch * 2)
-							local advance = frequency/sampleRate
-							advance = math.min(4.0, advance)
-							--local advance = localNoteOffset/pitch
-							if type_interpolate == "linear" then
-								if channel == 0 or channel == 2 or channel == 4 or channel == 6 then
-									mixLeft = mixLeft+interpolate(sample, pos, 1)
-								elseif channel == 1 or channel == 3 or channel == 5 or channel == 7 then
-									mixRight = mixRight+interpolate(sample, pos, 1)
-								end
-							elseif type_interpolate == "none" then
-								if channel == 0 or channel == 2 or channel == 4 or channel == 6 then
-									--local mixed = lowpass((sample[math.floor(pos)] or 0), 4000, sampleRate)
-									--mixLeft = mixLeft+mixed*volume
-									mixLeft = mixLeft+(sample[math.floor(pos)] or 0)*volume
-								elseif channel == 1 or channel == 3 or channel == 5 or channel == 7 then
-									--local mixed = lowpass((sample[math.floor(pos)] or 0), 4000, sampleRate)
-									--mixRight = mixRight+mixed*volume
-									mixRight = mixRight+(sample[math.floor(pos)] or 0)*volume
-end
+						local frequency = 7093789.2 / (pitch * 2)
+						local advance = frequency/sampleRate
+						advance = math.min(4.0, advance)
+						--local advance = localNoteOffset/pitch
+						if type_interpolate == "linear" then
+							if channel == 0 or channel == 2 or channel == 4 or channel == 6 then
+								mixLeft = mixLeft+interpolate(sample, pos, 1)
+							elseif channel == 1 or channel == 3 or channel == 5 or channel == 7 then
+								mixRight = mixRight+interpolate(sample, pos, 1)
 							end
-							currentChannel[4] = pos+advance
-						else
-							if loop > 0 then
-								currentChannel[4] = loop
-							else
-								currentChannel[1] = 0
-								currentChannel[4] = 1
+						elseif type_interpolate == "none" then
+							if channel == 0 or channel == 2 or channel == 4 or channel == 6 then
+								--local mixed = lowpass((sample[math.floor(pos)] or 0), 4000, sampleRate)
+								--mixLeft = mixLeft+mixed*volume
+								mixLeft = mixLeft+(sample[math.floor(pos)] or 0)*volume
+							elseif channel == 1 or channel == 3 or channel == 5 or channel == 7 then
+								--local mixed = lowpass((sample[math.floor(pos)] or 0), 4000, sampleRate)
+								--mixRight = mixRight+mixed*volume
+								mixRight = mixRight+(sample[math.floor(pos)] or 0)*volume
 							end
-							
 						end
+						pos = pos+advance
+						if sreplen > 2 then
+							if not currentChannel[11] and pos >= #sample then
+								pos = srepeat
+								currentChannel[11] = true
+							elseif currentChannel[11] and pos >= srepeat+sreplen then
+								pos = srepeat
+							end
+						else
+							if  pos > #sample then
+								currentChannel[1] = 0
+								pos = 0
+							end
+						end
+						currentChannel[4] = pos
 					end
 				end
 			end
@@ -482,6 +490,12 @@ end
 
 function editor.barUp()
 	barPosition = math.max(0, barPosition - 1)
+	if barPosition == 0 then
+		if patternPosition > 1 then
+			patternPosition = patternPosition - 1
+			counterY = counterY - 1
+		end
+	end
 end
 
 function editor.left()
@@ -490,7 +504,6 @@ function editor.left()
 		cursorPos = 6
 	end
 	cursorPos = math.max(1, cursorPos - 1)
-	print(cursorPos)
 end
 function editor.right()
 	--[[local pos = 0
@@ -503,7 +516,6 @@ function editor.right()
 		selectedChannel = math.min(numChannels-1, selectedChannel + 1)
 		cursorPos = 1
 	end
-	print(cursorPos)
 end
 
 function editor.getSelectedChannel()

@@ -12,9 +12,9 @@ local mod = require("lua/core/loadMod")
 local editor = require("lua/core/editor")
 local logo = require("lua/core/logo")
 
-fileSearch = true
+local fileSearch = true
 editor_mod = false
-loaded_mod = false
+local loaded_mod = false
 auto_play = false
 
 tickets = 0
@@ -24,18 +24,19 @@ bpm = 125
 screenWidth = love.graphics.getWidth()-40
 screenHeight = love.graphics.getHeight()/2
 
-mod_title = {}
+mod_title = ""
 mod_samples__info = {}
 mod_song__length = {}
 mod_underfined = {}
-mod_song__position = {}
-mod_underfined2 = {}
+mod_song__position = {0}
+mod_underfined2 = "M.K."
+signature_value = 1024
 mod_data_pattern = {}
-mod_sample_data = {}
+mod_sample_data = {{128, 1, 1, 1, 255, 255}}
 mod_sampleDecoded = {}
 mod_sampleDecoded2 = {}
 
-selected_file = ""
+local selected_file = ""
 canvas = love.graphics.newCanvas( )
 canvas:setFilter("linear", "nearest")
 canvasPattern = love.graphics.newCanvas( )
@@ -50,16 +51,12 @@ local currentSample = 1
 sampleRate = 44100
 numChannels = 4
 channels = {}
-channelPositions = {}
-releaseChannel = {}
-lastNote = {}
-periodTone = 0
 
 currentPattern = 1
 --currentPosition = 0
 
-mouseSelected = ""
-mouseSelectedColor = 0
+local mouseSelected = ""
+local mouseSelectedColor = 0
 
 local font = love.graphics.newImageFont("gfx/imagefont.png",
     " abcdefghijklmnopqrstuvwxyz" ..
@@ -109,7 +106,6 @@ function oscilationWave(ch, screenWidth, screenHeight)
 	local length = (mod_sampleDecoded[currentSample] == nil) and 1 or #mod_sampleDecoded[currentSample]
 	local zoomEditorT = zoomEditor*(screenWidth)/length
 	local wavePrecision = math.max(math.floor(zoomEditorT), 1)
-	print(wavePrecision)
 	--love.graphics.setColor(0, 1, 180/255)
 	local lines = {}
 	for x=1, length-1, 1 do
@@ -133,6 +129,37 @@ function love.load()
 	love.graphics.setFont(font)
 	editor.sendBuffer({{0, 0}}, 1)
 	editor.initEngine(4900, 0.707)
+
+	for i = 1, 31 do
+		mod_samples__info[(i-1)*6+1] = ""
+		mod_samples__info[(i-1)*6+2] = {0, 6}
+		mod_samples__info[(i-1)*6+3] = 0
+		mod_samples__info[(i-1)*6+4] = {0}
+		mod_samples__info[(i-1)*6+5] = {0, 0}
+		mod_samples__info[(i-1)*6+6] = {0, 6}
+	end
+	for i = 1, numChannels*4*128 do
+		mod_data_pattern[i] = 0
+	end
+	editor.init()
+	channel.init(numChannels, channels)
+	currentPosition = 0
+	currentPattern = 1
+	patternPosition = 1
+	for i=1, 31 do
+		local length = mod_sample_data[i] or 0
+		if length ~= 0 then
+			mod_sampleDecoded[i] = sampleDecode(mod_sample_data[i])
+		end
+	end
+	oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
+	editor.incCounter(0)
+	renderPattern = true
+	fileSearch = false
+	tickets = 0
+	loaded_mod = true
+	selected_file = ""
+
 end
 
 local beatTimer = 0
@@ -212,6 +239,7 @@ function love.keypressed(key, scancode, isrepeat)
 		else
 			auto_play = true
 			editor.resetBar()
+			tickets = 0
 		end
 		renderPattern = true
 	end
@@ -416,7 +444,8 @@ function love.draw()
 		love.graphics.setColor(1, 1, 1)
 	end
 	love.graphics.print("CurrentPattern: " .. currentPattern, 200, 0)
-	--love.graphics.print("Position: " .. editor.getPosition(), 400, 0)
+	love.graphics.print("Position: " .. editor.getPosition(), 600, 0)
+	love.graphics.print("Position: " .. patternPosition, 400, 0)
 	--love.graphics.print("ModPosition: " .. (mod_song__position[currentPattern+1] or 0), 550, 0)
 	love.graphics.print("BPM: " .. bpm, 200, 100)
 	love.graphics.print("Tickets: " .. ticksPerLine, 400, 100)
