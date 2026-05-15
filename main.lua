@@ -32,7 +32,7 @@ mod_song__position = {0}
 mod_underfined2 = "M.K."
 signature_value = 1024
 mod_data_pattern = {}
-mod_sample_data = {{128, 1, 1, 1, 255, 255}}
+mod_sample_data = {{128, 128, 128, 128, 127, 127, 127, 127}}
 mod_sampleDecoded = {}
 mod_sampleDecoded2 = {}
 
@@ -67,9 +67,10 @@ local offsetKey = 214
 t=0
 
 local zoomEditor = 1
+local zoomEditorTx = 1
 local showSample = false
 
-function sampleDecode(data, amplitudex)
+function sampleDecode(data)
     local out = {}
     for i = 1, #data do
         local v = data[i]
@@ -82,9 +83,6 @@ end
 function oscilationWave(ch, screenWidth, screenHeight)
 	love.graphics.setCanvas(canvas)
 	love.graphics.clear(0, 0, 0, 0)
-	love.graphics.setColor(0.03,0.03,0.03, 1)
-	love.graphics.setLineWidth(20)
-	love.graphics.rectangle("line", 10, 390, screenWidth+20, screenHeight/2+50)
 	love.graphics.setLineWidth(1)
 	love.graphics.setColor(0.11,0.11,0.11, 0.5)
 	love.graphics.rectangle("fill", 20, 400, screenWidth, screenHeight-120)
@@ -105,19 +103,26 @@ function oscilationWave(ch, screenWidth, screenHeight)
 	local offsetAmplitude = 0
 	local length = (mod_sampleDecoded[currentSample] == nil) and 1 or #mod_sampleDecoded[currentSample]
 	local zoomEditorT = zoomEditor*(screenWidth)/length
-	local wavePrecision = math.max(math.floor(zoomEditorT), 1)
+	local wavePrecision = math.min(sampleLength/2, math.floor(zoomEditorTx/zoomEditorT))+1
 	--love.graphics.setColor(0, 1, 180/255)
 	local lines = {}
-	for x=1, length-1, 1 do
-		if offsetplay >= screenWidth then
+	for x=1, length-1, wavePrecision do
+		local xx = 20+(x-1)*zoomEditorT
+		local yy = 200+screenHeight+mod_sampleDecoded[currentSample][x+1]/2
+		for i = 0, wavePrecision-1 do
+			lines[(x+i-1)*2+1] = xx
+			lines[(x+i-1)*2+2] = yy
+		end
+		if lines[(x-1)*2+1] >= screenWidth+20 then
 			break
 		end
-		lines[(x-1)*2+1] = 20+(x-1)*zoomEditorT+zoomEditorT
-		lines[(x-1)*2+2] = 200+screenHeight+mod_sampleDecoded[currentSample][x+1]/4
 	end
-	if #lines > 0 then love.graphics.line(lines) end
+	if #lines > 2 then love.graphics.line(lines) end
 	love.graphics.print(currentSample, 20, 400)
 	love.graphics.print("Length: " .. sampleLength, 20, screenHeight*2-40)
+	love.graphics.setColor(0.03,0.03,0.03, 1)
+	love.graphics.setLineWidth(20)
+	love.graphics.rectangle("line", 10, 390, screenWidth+20, screenHeight/2+50)
 	love.graphics.setCanvas()
 end
 
@@ -132,12 +137,13 @@ function love.load()
 
 	for i = 1, 31 do
 		mod_samples__info[(i-1)*6+1] = ""
-		mod_samples__info[(i-1)*6+2] = {0, 6}
+		mod_samples__info[(i-1)*6+2] = {0, 7}
 		mod_samples__info[(i-1)*6+3] = 0
 		mod_samples__info[(i-1)*6+4] = {0}
 		mod_samples__info[(i-1)*6+5] = {0, 0}
-		mod_samples__info[(i-1)*6+6] = {0, 6}
+		mod_samples__info[(i-1)*6+6] = {0, 7}
 	end
+
 	for i = 1, numChannels*4*128 do
 		mod_data_pattern[i] = 0
 	end
@@ -145,7 +151,7 @@ function love.load()
 	channel.init(numChannels, channels)
 	currentPosition = 0
 	currentPattern = 1
-	patternPosition = 1
+	patternPosition = 0
 	for i=1, 31 do
 		local length = mod_sample_data[i] or 0
 		if length ~= 0 then
@@ -181,7 +187,7 @@ function love.update(dt)
 		channel.init(numChannels, channels)
 		currentPosition = 0
 		currentPattern = 1
-		patternPosition = 64*(mod_song__position[currentPattern])+1
+		patternPosition = 64*(mod_song__position[currentPattern])
 		for i=1, 31 do
 			local length = mod_sample_data[i] or 0
 			if length ~= 0 then
@@ -239,7 +245,9 @@ function love.keypressed(key, scancode, isrepeat)
 		else
 			auto_play = true
 			editor.resetBar()
-			tickets = 0
+			patternPosition = 64*mod_song__position[currentPattern]
+			editor.incCounter(0)
+			tickets = -1
 		end
 		renderPattern = true
 	end
@@ -363,9 +371,10 @@ function love.wheelmoved(x, y)
 	if y > 0 then
 		if showSample then
 			zoomEditor = zoomEditor*2
+			zoomEditorTx = zoomEditorTx/2
 			oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
 		else
-			if patternPosition > 1 then
+			if counterY > 0 then
 				patternPosition = patternPosition - 1
 				editor.counterYUp()
 				renderPattern = true
@@ -374,7 +383,10 @@ function love.wheelmoved(x, y)
 	end
 	if y < 0 then
 		if showSample then
-			zoomEditor = zoomEditor/2
+			if zoomEditorTx < 1 then
+				zoomEditor = zoomEditor/2
+				zoomEditorTx = zoomEditorTx*2
+			end
 			oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
 		else
 			patternPosition = patternPosition + 1

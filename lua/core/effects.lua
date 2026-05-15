@@ -2,10 +2,15 @@ effects = {}
 --local editor = require("lua/core/editor")
 
 function effects.nextPattern()
-	currentPosition = 0
 	currentPattern = currentPattern+1
 	counterY = counterY-1
+	if mod_song__position[currentPattern] == nil then
+		currentPattern = 1
+		counterY = 0
+	end
 	patternPosition = (64-currentPosition)*mod_song__position[currentPattern]
+	currentPosition = 0
+	tickets = -1
 end
 
 function effects.portUp(param, channel)

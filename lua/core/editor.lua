@@ -224,8 +224,8 @@ function editor.drawPattern(q)
 	--yPos = yPos*patternPosition
 	for y = 0, 17 do
 		for x = 0, numChannels-1 do
-			local data = (y+patternPosition-1)*(numChannels*4) + x*4
-			if y+patternPosition-1 < 64*(mod_song__position[currentPattern]+1) then
+			local data = (y+patternPosition)*(numChannels*4) + x*4
+			if y+patternPosition < 64*(mod_song__position[currentPattern]+1) then
 				if y == barPosition and editor_mod then
 					love.graphics.setColor(1, 0, 0, 0.1)
 					love.graphics.rectangle("fill", gridPositionX, gridPositionY+barPosition*20, gridX, 20)
@@ -233,7 +233,6 @@ function editor.drawPattern(q)
 				love.graphics.setColor(1, 0, 1, 0.01)
 				local length = 100/3
 				if cursorPos > 3 then
-
 					love.graphics.rectangle("fill", 24+(cursorPos+3)*10+selectedChannel*4*25, gridPositionY+barPosition*20, 10, 20)
 				else
 					love.graphics.rectangle("fill", 20+(cursorPos-1)*33+selectedChannel*4*25, gridPositionY+barPosition*20, (cursorPos == 3) and 10 or 20, 20)
@@ -314,14 +313,13 @@ function processTrackerTick()
 			currentPattern = currentPattern+1
 			if mod_song__position[currentPattern] == nil then
 				currentPattern = 1
-				patternPosition = 1
-			else
-				patternPosition = (64*(mod_song__position[currentPattern]) == 0) and 64*(mod_song__position[currentPattern])+1 or 64*(mod_song__position[currentPattern])
+				tickets = -1
 			end
+			patternPosition = 64*mod_song__position[currentPattern]
 			editor.incCounter(0)
 		end
 		for channel=0, numChannels-1 do
-			local base = (patternPosition-1)*numChannels*4 + channel*4
+			local base = patternPosition*numChannels*4 + channel*4
 			--print(base, mod_data_pattern[base+1])
 			--print(currentPattern, patternPosition, 64*(mod_song__position[currentPattern]+1)+1, "realPosition Pattern: " .. mod_song__position[currentPattern])
 			local b1 = mod_data_pattern[base+1]
@@ -358,7 +356,7 @@ function processTrackerTick()
 		renderPattern = true
 	else
 		for channel=0, numChannels-1 do
-			local base = (patternPosition-1)*numChannels*4 + channel*4
+			local base = patternPosition*numChannels*4 + channel*4
 			local b3 = mod_data_pattern[base+3]
 			local b4 = mod_data_pattern[base+4]
 			local effect = bit.band(b3, 0x0F)
@@ -408,9 +406,9 @@ function editor.channelPlay(qChannels)
 						--local advance = localNoteOffset/pitch
 						if type_interpolate == "linear" then
 							if channel == 0 or channel == 2 or channel == 4 or channel == 6 then
-								mixLeft = mixLeft+interpolate(sample, pos, 1)
+								mixLeft = mixLeft+interpolate(sample, pos, volume)
 							elseif channel == 1 or channel == 3 or channel == 5 or channel == 7 then
-								mixRight = mixRight+interpolate(sample, pos, 1)
+								mixRight = mixRight+interpolate(sample, pos, volume)
 							end
 						elseif type_interpolate == "none" then
 							if channel == 0 or channel == 2 or channel == 4 or channel == 6 then
@@ -453,7 +451,7 @@ function editor.channelPlay(qChannels)
 end
 
 function editor.init()
-	patternPosition = 1
+	patternPosition = 0
 	ticksPerLine = 6
 	bpm = 125
 	channels = {}
@@ -497,7 +495,7 @@ end
 function editor.barUp()
 	barPosition = math.max(0, barPosition - 1)
 	if barPosition == 0 then
-		if patternPosition > 1 then
+		if patternPosition > 0 then
 			patternPosition = patternPosition - 1
 			counterY = counterY - 1
 		end
@@ -532,7 +530,7 @@ function editor.keyMap(key, sampleNum, channels)
 	for i = 0, 32 do
 		if key == "delete" then
 			if editor_mod and not fileSearch then
-				local data = (barPosition+patternPosition-1)*(numChannels*4) + selectedChannel*4
+				local data = (barPosition+patternPosition)*(numChannels*4) + selectedChannel*4
 				mod_data_pattern[data+1] = 0
 				mod_data_pattern[data+2] = 0
 				mod_data_pattern[data+3] = 0
@@ -541,7 +539,7 @@ function editor.keyMap(key, sampleNum, channels)
 			renderPattern = true
 		end
 		if key == numHex[i] and editor_mod then
-			local base = (patternPosition+barPosition-1)*numChannels*4 + selectedChannel*4
+			local base = (patternPosition+barPosition)*numChannels*4 + selectedChannel*4
 			if cursorPos == 3 then
 				mod_data_pattern[base+cursorPos] = bit.bor(bit.band(mod_data_pattern[base+cursorPos], 0xF0), numHex[key])
 			end
@@ -556,7 +554,7 @@ function editor.keyMap(key, sampleNum, channels)
 		if key == keyMap[i] and cursorPos == 1 then
 			--editor.REALTIME_PLAY_SAMPLE(keyMap[key], sampleNum, 44010, 1)
 			if editor_mod and not fileSearch then
-				local data = (barPosition+patternPosition-1)*(numChannels*4) + selectedChannel*4
+				local data = (barPosition+patternPosition)*(numChannels*4) + selectedChannel*4
 				mod_data_pattern[data+3] = bit.bor(bit.lshift(bit.band(sampleNum, 0x0F), 4), bit.band(mod_data_pattern[data+3], 0x0F))
 				mod_data_pattern[data+1] = bit.band(sampleNum, 0xF0)
 				mod_data_pattern[data+1] = bit.rshift(bit.band(keyMap[key], 0xF00), 8)
