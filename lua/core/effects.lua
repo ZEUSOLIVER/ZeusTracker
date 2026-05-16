@@ -3,7 +3,7 @@ effects = {}
 
 function effects.nextPattern()
 	currentPattern = currentPattern+1
-	counterY = counterY-1
+	counterY = 0
 	if mod_song__position[currentPattern] == nil then
 		currentPattern = 1
 		counterY = 0

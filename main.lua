@@ -137,12 +137,19 @@ function love.load()
 
 	for i = 1, 31 do
 		mod_samples__info[(i-1)*6+1] = ""
-		mod_samples__info[(i-1)*6+2] = {0, 7}
+		mod_samples__info[(i-1)*6+2] = {0, 0}
 		mod_samples__info[(i-1)*6+3] = 0
 		mod_samples__info[(i-1)*6+4] = {0}
 		mod_samples__info[(i-1)*6+5] = {0, 0}
-		mod_samples__info[(i-1)*6+6] = {0, 7}
+		mod_samples__info[(i-1)*6+6] = {0, 0}
 	end
+
+	mod_samples__info[1] = ""
+	mod_samples__info[2] = {0, 7}
+	mod_samples__info[3] = 0
+	mod_samples__info[4] = {0}
+	mod_samples__info[5] = {0, 0}
+	mod_samples__info[6] = {0, 7}
 
 	for i = 1, numChannels*4*128 do
 		mod_data_pattern[i] = 0
@@ -187,6 +194,7 @@ function love.update(dt)
 		channel.init(numChannels, channels)
 		currentPosition = 0
 		currentPattern = 1
+		counterY = 0
 		patternPosition = 64*(mod_song__position[currentPattern])
 		for i=1, 31 do
 			local length = mod_sample_data[i] or 0
@@ -241,6 +249,7 @@ function love.keypressed(key, scancode, isrepeat)
 			auto_play = false
 			for i = 1, numChannels do
 				channels[i][1] = 0
+				channels[i][4] = 0
 			end
 		else
 			auto_play = true
@@ -261,6 +270,7 @@ function love.keypressed(key, scancode, isrepeat)
 		auto_play = false
 		for i = 1, numChannels do
 			channels[i][1] = 0
+			channels[i][4] = 0
 		end
 		--editor.resetBar()
 		renderPattern = true
