@@ -94,19 +94,19 @@ function oscilationWave(ch, screenWidth, screenHeight)
 		love.graphics.line(20,gy,screenWidth+20,gy)
 	end
 	love.graphics.setColor(1, 1, 1)
-	local sampleLength = (mod_samples__info[(currentSample-1)*6+2][1]*256+mod_samples__info[(currentSample-1)*6+2][2])*2
+	local sampleLength = (mod_sampleDecoded[currentSample] == nil) and 1 or #mod_sampleDecoded[currentSample]
+	--local sampleLength = (mod_samples__info[(currentSample-1)*6+2][1]*256+mod_samples__info[(currentSample-1)*6+2][2])*2
 	love.graphics.setColor(0.23, 0.23, 0.23)
 	if sampleLength > 0 then
 		love.graphics.setColor(1, 1, 1)
 	end
 	local offsetplay = 0
 	local offsetAmplitude = 0
-	local length = (mod_sampleDecoded[currentSample] == nil) and 1 or #mod_sampleDecoded[currentSample]
-	local zoomEditorT = zoomEditor*(screenWidth)/length
+	local zoomEditorT = zoomEditor*(screenWidth)/sampleLength
 	local wavePrecision = math.min(sampleLength/2, math.floor(zoomEditorTx/zoomEditorT))+1
 	--love.graphics.setColor(0, 1, 180/255)
 	local lines = {}
-	for x=1, length-1, wavePrecision do
+	for x=1, sampleLength-1, wavePrecision do
 		local xx = 20+(x-1)*zoomEditorT
 		local yy = 200+screenHeight+mod_sampleDecoded[currentSample][x+1]/2
 		for i = 0, wavePrecision-1 do
@@ -145,11 +145,11 @@ function love.load()
 	end
 
 	mod_samples__info[1] = ""
-	mod_samples__info[2] = {0, 7}
+	mod_samples__info[2] = {0, 4}
 	mod_samples__info[3] = 0
 	mod_samples__info[4] = {0}
 	mod_samples__info[5] = {0, 0}
-	mod_samples__info[6] = {0, 7}
+	mod_samples__info[6] = {0, 4}
 
 	for i = 1, numChannels*4*128 do
 		mod_data_pattern[i] = 0
@@ -380,8 +380,8 @@ end
 function love.wheelmoved(x, y)
 	if y > 0 then
 		if showSample then
-			zoomEditor = zoomEditor*2
-			zoomEditorTx = zoomEditorTx/2
+			zoomEditor = zoomEditor*1.2
+			zoomEditorTx = zoomEditorTx/1.2
 			oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
 		else
 			if counterY > 0 then
@@ -394,8 +394,8 @@ function love.wheelmoved(x, y)
 	if y < 0 then
 		if showSample then
 			if zoomEditorTx < 1 then
-				zoomEditor = zoomEditor/2
-				zoomEditorTx = zoomEditorTx*2
+				zoomEditor = zoomEditor/1.2
+				zoomEditorTx = zoomEditorTx*1.2
 			end
 			oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
 		else
@@ -480,7 +480,7 @@ function love.draw()
 			local ecx = srepeat*zoomEditor/(#sample/screenWidth)
 			local edx = (srepeat+sreplen)*zoomEditor/(#sample/screenWidth)
 			love.graphics.setColor(1, 1, 0, 0.02)
-			love.graphics.rectangle("fill", 20+ecx, 100+screenHeight, 20+edx, 200+screenHeight+80)
+			love.graphics.rectangle("fill", 20+ecx, 100+screenHeight, edx-ecx, 100+80)
 			love.graphics.setColor(1, 1, 0)
 			love.graphics.line(20+ecx, 100+screenHeight, 20+ecx, 200+screenHeight+80)
 			love.graphics.line(20+edx, 100+screenHeight, 20+edx, 200+screenHeight+80)

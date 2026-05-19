@@ -24,7 +24,7 @@ function mod.load(path)
 		mod_samples__info[(i-1)*6+6] = {data:byte(offset+29, offset+30)}
 	end
 	local songLength = data:byte(951)
-	print(songLength)
+	--print(songLength)
 	mod_song__length[1] = songLength
 	mod_underfined[1] = data:byte(952)
 	mod_song__position = {data:byte(953, 1080)}
@@ -42,7 +42,7 @@ function mod.load(path)
 		signature_value = 4096
 		numChannels = 16
 	end
-	print(mod_underfined2)
+	--print(mod_underfined2)
 	local maxPat = 0
 	for i=1, songLength do
 		local p = mod_song__position[i] or 0
