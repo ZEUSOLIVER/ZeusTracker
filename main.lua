@@ -479,6 +479,8 @@ function love.draw()
 			local sample = mod_sampleDecoded[currentSample]
 			local ecx = srepeat*zoomEditor/(#sample/screenWidth)
 			local edx = (srepeat+sreplen)*zoomEditor/(#sample/screenWidth)
+			love.graphics.setColor(1, 1, 0, 0.02)
+			love.graphics.rectangle("fill", 20+ecx, 100+screenHeight, 20+edx, 200+screenHeight+80)
 			love.graphics.setColor(1, 1, 0)
 			love.graphics.line(20+ecx, 100+screenHeight, 20+ecx, 200+screenHeight+80)
 			love.graphics.line(20+edx, 100+screenHeight, 20+edx, 200+screenHeight+80)
