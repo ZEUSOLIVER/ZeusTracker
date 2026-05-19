@@ -460,9 +460,29 @@ function love.draw()
 	if showSample then
 		love.graphics.draw(canvas, 0, 0)
 		love.graphics.setColor(0, 1, 180/255)
-		local ch = editor.getSelectedChannel()
-		local pos = channels[1][4]/(11780/screenWidth)
-		love.graphics.line(20+pos, 100+screenHeight, 20+pos, 200+screenHeight+80)
+		local ch = nil
+		local searchSample = nil
+		for channel = 1, numChannels do
+			if channels[channel][1] == currentSample then
+				searchSample = channels[channel][1]
+				ch = channels[channel]
+			end
+		end
+		local sample = mod_sampleDecoded[searchSample]
+		if sample then
+			local pos = ch[4]*zoomEditor/(#sample/screenWidth)
+			love.graphics.line(20+pos, 100+screenHeight, 20+pos, 200+screenHeight+80)
+		end
+		local sreplen = (mod_samples__info[(currentSample-1)*6+6][1]*256 + mod_samples__info[(currentSample-1)*6+6][2])*2
+		if sreplen > 2 then
+			local srepeat = (mod_samples__info[(currentSample-1)*6+5][1]*256 + mod_samples__info[(currentSample-1)*6+5][2])*2
+			local sample = mod_sampleDecoded[currentSample]
+			local ecx = srepeat*zoomEditor/(#sample/screenWidth)
+			local edx = (srepeat+sreplen)*zoomEditor/(#sample/screenWidth)
+			love.graphics.setColor(1, 1, 0)
+			love.graphics.line(20+ecx, 100+screenHeight, 20+ecx, 200+screenHeight+80)
+			love.graphics.line(20+edx, 100+screenHeight, 20+edx, 200+screenHeight+80)
+		end
 		love.graphics.setColor(1, 1, 1)
 	end
 	love.graphics.print("CurrentPattern: " .. currentPattern, 200, 0)
