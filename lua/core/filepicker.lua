@@ -35,16 +35,16 @@ function filePicker.load(path)
 	for line in handle:lines() do 
 		table.insert(modstable, line) 
 	end
-	--[[local command 
+	local command 
 	if package.config:sub(1,1) == "\\" then
-		command = 'dir "' .. path .. '" /b *.mod' 
+		command = 'dir "' .. path .. '" /b *.xm' 
 	else
 		command = 'find "' .. path .. '" -maxdepth 1 -type f -name "*.xm"' 
 	end
 	local handle = io.popen(command)
 	for line in handle:lines() do 
 		table.insert(modstable, line) 
-	end]]
+	end
 	handle:close() 
 	return modstable
 end

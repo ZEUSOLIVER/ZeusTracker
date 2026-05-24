@@ -8,6 +8,7 @@ local channel = require("lua/core/channel")
 local ffi = require("ffi")
 local filePicker = require("lua/core/filepicker")
 local mod = require("lua/core/loadMod")
+local xm = require("lua/core/loadXM")
 --local effects = require("lua/core/effects")
 local editor = require("lua/core/editor")
 local logo = require("lua/core/logo")
@@ -16,10 +17,12 @@ local fileSearch = true
 editor_mod = false
 local loaded_mod = false
 auto_play = false
+playerFormatXM = false
 
 tickets = 0
 ticksPerLine = 6
 bpm = 125
+rowsInPattern = 64
 
 screenWidth = love.graphics.getWidth()-40
 screenHeight = love.graphics.getHeight()/2
@@ -157,7 +160,7 @@ function love.load()
 	samples__info[1][5] = 0
 	samples__info[1][6] = 4
 
-	for i = 1, numChannels*4*64 do
+	for i = 1, numChannels*4*rowsInPattern do
 		data_pattern[i] = 0
 	end
 	editor.init()
@@ -197,25 +200,43 @@ function love.update(dt)
 	if selected_file ~= "" then
 		editor.init()
 		channel.init(numChannels, channels)
-		mod.load(selected_file)
-		channel.init(numChannels, channels)
-		currentPosition = 0
-		currentPattern = 1
-		counterY = 0
-		patternPosition = 64*(song__position[currentPattern])
-		for i=1, 31 do
-			local length = sample_data[i] or 0
-			if length ~= 0 then
-				sampleDecoded[i] = sampleDecode(sample_data[i])
+		if string.sub(selected_file, #selected_file-3, #selected_file) == ".mod" then
+			playerFormatXM = false
+			mod.load(selected_file)
+			rowsInPattern = 64
+			channel.init(numChannels, channels)
+			currentPosition = 0
+			currentPattern = 1
+			counterY = 0
+			patternPosition = 64*(song__position[currentPattern])
+			for i=1, 31 do
+				local length = sample_data[i] or 0
+				if length ~= 0 then
+					sampleDecoded[i] = sampleDecode(sample_data[i])
+				end
 			end
+			oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
+			editor.incCounter(0)
+			renderPattern = true
+			fileSearch = false
+			tickets = 0
+			loaded_mod = true
+			selected_file = ""
+		elseif string.sub(selected_file, #selected_file-2, #selected_file) == ".xm" then
+			playerFormatXM = true
+			xm.load(selected_file)
+			currentPosition = 0
+			currentPattern = 1
+			counterY = 0
+			patternPosition = rowsInPattern*(song__position[currentPattern])
+			--oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
+			editor.incCounter(0)
+			--renderPattern = true
+			fileSearch = false
+			tickets = 0
+			loaded_mod = true
+			selected_file = ""
 		end
-		oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
-		editor.incCounter(0)
-		renderPattern = true
-		fileSearch = false
-		tickets = 0
-		loaded_mod = true
-		selected_file = ""
 	end
 	--[[loadMod("aftershc.mod")
 	for i=1, 31 do
@@ -263,7 +284,7 @@ function love.keypressed(key, scancode, isrepeat)
 		else
 			auto_play = true
 			editor.resetBar()
-			patternPosition = 64*song__position[currentPattern]
+			patternPosition = rowsInPattern*song__position[currentPattern]
 			editor.incCounter(0)
 			tickets = -1
 		end

@@ -225,7 +225,12 @@ function editor.drawPattern(q)
 	for y = 0, 17 do
 		for x = 0, numChannels-1 do
 			local data = (y+patternPosition)*(numChannels*4) + x*4
-			if y+patternPosition < 64*(song__position[currentPattern]+1) then
+			if playerFormatXM then
+				data = (y+patternPosition)*(numChannels*5) + x*5
+			else
+				data = (y+patternPosition)*(numChannels*4) + x*4
+			end
+			if y+patternPosition < rowsInPattern*(song__position[currentPattern]+1) then
 				if y == barPosition and editor_mod then
 					love.graphics.setColor(1, 0, 0, 0.1)
 					love.graphics.rectangle("fill", gridPositionX, gridPositionY+barPosition*20, gridX, 20)
@@ -238,19 +243,37 @@ function editor.drawPattern(q)
 					love.graphics.rectangle("fill", 20+(cursorPos-1)*33+selectedChannel*4*25, gridPositionY+barPosition*20, (cursorPos == 3) and 10 or 20, 20)
 				end
 				love.graphics.setColor(1, 1, 1)
-				local b1 = data_pattern[data+1]
-				local b2 = data_pattern[data+2]
-				local b3 = data_pattern[data+3]
-				local b4 = data_pattern[data+4]
-				local period = bit.bor(bit.lshift(bit.band(b1, 0x0F), 8), b2)
+				local period
+				local instrument
+				local volume
+				local effect
+				local param
+				if playerFormatXM then
+					local b1 = data_pattern[data+1]
+					local b2 = data_pattern[data+2]
+					local b3 = data_pattern[data+3]
+					local b4 = data_pattern[data+4]
+					local b4 = data_pattern[data+5]
+					period = b1
+					instrument = b2
+					volume = b3
+					effect = b4
+					param = b5
+				else
+					local b1 = data_pattern[data+1]
+					local b2 = data_pattern[data+2]
+					local b3 = data_pattern[data+3]
+					local b4 = data_pattern[data+4]
+					period = bit.bor(bit.lshift(bit.band(b1, 0x0F), 8), b2)
+					instrument = bit.bor(bit.band(b1, 0xF0), bit.rshift(bit.band(b3, 0xF0), 4))
+					effect = bit.band(b3, 0x0F)
+					param = b4
+				end
 				local noteK
 				for i=0, #note do
 					noteK = (note[period] ~= nil) and note[period] or "---"
 					break
 				end
-				local instrument = bit.bor(bit.band(b1, 0xF0), bit.rshift(bit.band(b3, 0xF0), 4))
-				local effect = bit.band(b3, 0x0F)
-				local param = b4
 				if noteK ~= "---" then
 					love.graphics.setColor(0.5, 0.5, 1)
 				end 
@@ -308,20 +331,23 @@ end
 
 function processTrackerTick()
 	if tickets == 0 then
-		if patternPosition >= 64*(song__position[currentPattern]+1) then
+		if patternPosition >= rowsInPattern*(song__position[currentPattern]+1) then
 			editor.resetPosition()
 			currentPattern = currentPattern+1
 			if song__position[currentPattern] == nil then
 				currentPattern = 1
 				tickets = -1
 			end
-			patternPosition = 64*song__position[currentPattern]
+			patternPosition = rowsInPattern*song__position[currentPattern]
 			editor.incCounter(0)
 		end
 		for channel=0, numChannels-1 do
 			local base = patternPosition*numChannels*4 + channel*4
+			if formatPlayerXM then
+				data = (y+patternPosition)*(numChannels*5) + x*5
+			end
 			--print(base, data_pattern[base+1])
-			--print(currentPattern, patternPosition, 64*(song__position[currentPattern]+1)+1, "realPosition Pattern: " .. song__position[currentPattern])
+			--print(currentPattern, patternPosition, rowsInPattern*(song__position[currentPattern]+1)+1, "realPosition Pattern: " .. song__position[currentPattern])
 			local b1 = data_pattern[base+1]
 			local b2 = data_pattern[base+2]
 			local b3 = data_pattern[base+3]
@@ -490,7 +516,7 @@ end
 function editor.barDown()
 	barPosition = math.min(17, barPosition + 1)
 	if barPosition >= 17 then
-		if 64-(currentPosition+barPosition) > 1 then
+		if rowsInPattern-(currentPosition+barPosition) > 1 then
 			patternPosition = patternPosition + 1
 			counterY = counterY + 1
 		end

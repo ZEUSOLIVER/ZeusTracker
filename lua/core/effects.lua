@@ -5,9 +5,8 @@ function effects.nextPattern()
 	currentPattern = currentPattern+1
 	if song__position[currentPattern] == nil then
 		currentPattern = 1
-		counterY = 0
 	end
-	patternPosition = (64-currentPosition)*song__position[currentPattern]
+	patternPosition = (rowsInPattern-currentPosition)*song__position[currentPattern]
 	counterY = 0
 	currentPosition = 0
 	tickets = -1
