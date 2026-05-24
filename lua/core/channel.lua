@@ -15,7 +15,7 @@ function channel.specView(ch, x, y)
 	local pos = math.floor(currentChannel[4])
 	local volume = currentChannel[3] or 0
 	volume = volume*0.25
-	local sample = mod_sampleDecoded[currentChannel[1]] or {}
+	local sample = sampleDecoded[currentChannel[1]] or {}
 	--local value = sample[pos] or 0
 	local offsetY = volume*(sample[pos] or 0)
 	local length = (#sample < 40 and #sample > 0) and #sample or 40

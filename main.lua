@@ -24,17 +24,17 @@ bpm = 125
 screenWidth = love.graphics.getWidth()-40
 screenHeight = love.graphics.getHeight()/2
 
-mod_title = ""
-mod_samples__info = {}
-mod_song__length = {}
-mod_underfined = {}
-mod_song__position = {0}
-mod_underfined2 = "M.K."
+title = ""
+samples__info = {}
+song__length = {}
+underfined = {}
+song__position = {0}
+underfined2 = "M.K."
 signature_value = 1024
-mod_data_pattern = {}
-mod_sample_data = {{128, 128, 128, 128, 127, 127, 127, 127}}
-mod_sampleDecoded = {}
-mod_sampleDecoded2 = {}
+data_pattern = {}
+sample_data = {{128, 128, 128, 128, 127, 127, 127, 127}}
+sampleDecoded = {}
+sampleDecoded2 = {}
 
 local selected_file = ""
 canvas = love.graphics.newCanvas( )
@@ -94,8 +94,8 @@ function oscilationWave(ch, screenWidth, screenHeight)
 		love.graphics.line(20,gy,screenWidth+20,gy)
 	end
 	love.graphics.setColor(1, 1, 1)
-	local sampleLength = (mod_sampleDecoded[currentSample] == nil) and 1 or #mod_sampleDecoded[currentSample]
-	--local sampleLength = (mod_samples__info[(currentSample-1)*6+2][1]*256+mod_samples__info[(currentSample-1)*6+2][2])*2
+	local sampleLength = (sampleDecoded[currentSample] == nil) and 1 or #sampleDecoded[currentSample]
+	--local sampleLength = samples__info[currentSample][2]*2
 	love.graphics.setColor(0.23, 0.23, 0.23)
 	if sampleLength > 0 then
 		love.graphics.setColor(1, 1, 1)
@@ -108,7 +108,7 @@ function oscilationWave(ch, screenWidth, screenHeight)
 	local lines = {}
 	for x=1, sampleLength-1, wavePrecision do
 		local xx = 20+(x-1)*zoomEditorT
-		local yy = 200+screenHeight+mod_sampleDecoded[currentSample][x+1]/2
+		local yy = 200+screenHeight+sampleDecoded[currentSample][x+1]/2
 		for i = 0, wavePrecision-1 do
 			lines[(x+i-1)*2+1] = xx
 			lines[(x+i-1)*2+2] = yy
@@ -132,27 +132,33 @@ function love.load()
 	editor.noteOffset(856)
 	editor.localNoteOffset(offsetKey)
 	love.graphics.setFont(font)
+	local font = love.graphics.newFont("gfx/Font.ttf", 12)
+	love.graphics.setFont(font)
 	editor.sendBuffer({{0, 0}}, 1)
 	editor.initEngine(4900, 0.707)
-
+	
+	numChannels = 8
+	for i=1, 31 do
+		samples__info[i] = {"", 0, 0, 0, 0, 0}
+	end
 	for i = 1, 31 do
-		mod_samples__info[(i-1)*6+1] = ""
-		mod_samples__info[(i-1)*6+2] = {0, 0}
-		mod_samples__info[(i-1)*6+3] = 0
-		mod_samples__info[(i-1)*6+4] = {0}
-		mod_samples__info[(i-1)*6+5] = {0, 0}
-		mod_samples__info[(i-1)*6+6] = {0, 0}
+		samples__info[i][1] = ""
+		samples__info[i][2] = 0
+		samples__info[i][3] = 0
+		samples__info[i][4] = 0
+		samples__info[i][5] = 0
+		samples__info[i][6] = 0
 	end
 
-	mod_samples__info[1] = ""
-	mod_samples__info[2] = {0, 4}
-	mod_samples__info[3] = 0
-	mod_samples__info[4] = {0}
-	mod_samples__info[5] = {0, 0}
-	mod_samples__info[6] = {0, 4}
+	samples__info[1][1] = ""
+	samples__info[1][2] = 4
+	samples__info[1][3] = 0
+	samples__info[1][4] = 0
+	samples__info[1][5] = 0
+	samples__info[1][6] = 4
 
-	for i = 1, numChannels*4*128 do
-		mod_data_pattern[i] = 0
+	for i = 1, numChannels*4*64 do
+		data_pattern[i] = 0
 	end
 	editor.init()
 	channel.init(numChannels, channels)
@@ -160,9 +166,9 @@ function love.load()
 	currentPattern = 1
 	patternPosition = 0
 	for i=1, 31 do
-		local length = mod_sample_data[i] or 0
+		local length = sample_data[i] or 0
 		if length ~= 0 then
-			mod_sampleDecoded[i] = sampleDecode(mod_sample_data[i])
+			sampleDecoded[i] = sampleDecode(sample_data[i])
 		end
 	end
 	oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
@@ -190,16 +196,17 @@ end
 function love.update(dt)
 	if selected_file ~= "" then
 		editor.init()
+		channel.init(numChannels, channels)
 		mod.load(selected_file)
 		channel.init(numChannels, channels)
 		currentPosition = 0
 		currentPattern = 1
 		counterY = 0
-		patternPosition = 64*(mod_song__position[currentPattern])
+		patternPosition = 64*(song__position[currentPattern])
 		for i=1, 31 do
-			local length = mod_sample_data[i] or 0
+			local length = sample_data[i] or 0
 			if length ~= 0 then
-				mod_sampleDecoded[i] = sampleDecode(mod_sample_data[i])
+				sampleDecoded[i] = sampleDecode(sample_data[i])
 			end
 		end
 		oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
@@ -212,9 +219,9 @@ function love.update(dt)
 	end
 	--[[loadMod("aftershc.mod")
 	for i=1, 31 do
-		local length = mod_sample_data[i] or 0
+		local length = sample_data[i] or 0
 		if length ~= 0 then
-			mod_sampleDecoded[i] = sampleDecode(mod_sample_data[i])
+			sampleDecoded[i] = sampleDecode(sample_data[i])
 		end
 	end]]
 
@@ -229,6 +236,8 @@ function love.update(dt)
 	t=t+1
 	--logo.update(dt/2+math.min(1, (math.abs(periodTone)/2020)))
 	logo.update(dt/2)
+	--screenWidth = love.graphics.getWidth()-40
+	--screenHeight = love.graphics.getHeight()/2
 end
 
 
@@ -254,7 +263,7 @@ function love.keypressed(key, scancode, isrepeat)
 		else
 			auto_play = true
 			editor.resetBar()
-			patternPosition = 64*mod_song__position[currentPattern]
+			patternPosition = 64*song__position[currentPattern]
 			editor.incCounter(0)
 			tickets = -1
 		end
@@ -443,7 +452,7 @@ function love.draw()
 		love.graphics.rectangle("fill", 200+screenWidth/2, 20, 200, screenHeight-140)
 		love.graphics.setColor(1, 1, 1)
 		for i=1, 11 do
-			love.graphics.print(mod_samples__info[(i-1)*6+1],200+screenWidth/2,(i-1)*14+20)
+			love.graphics.print(samples__info[i][1],200+screenWidth/2,(i-1)*14+20)
 		end
 		if renderPattern then
 			love.graphics.setCanvas(canvasPattern)
@@ -453,7 +462,9 @@ function love.draw()
 			love.graphics.setCanvas()
 		end
 		for i = 1, numChannels do
-			channel.specView(i, 20+(i-1)*100, 200)
+			if i < 9 then
+				channel.specView(i, 20+(i-1)*100, 200)
+			end
 		end
 		love.graphics.draw(canvasPattern, 0, 0)
 	end
@@ -468,15 +479,15 @@ function love.draw()
 				ch = channels[channel]
 			end
 		end
-		local sample = mod_sampleDecoded[searchSample]
+		local sample = sampleDecoded[searchSample]
 		if sample then
 			local pos = ch[4]*zoomEditor/(#sample/screenWidth)
 			love.graphics.line(20+pos, 100+screenHeight, 20+pos, 200+screenHeight+80)
 		end
-		local sreplen = (mod_samples__info[(currentSample-1)*6+6][1]*256 + mod_samples__info[(currentSample-1)*6+6][2])*2
+		local sreplen = samples__info[currentSample][6]*2
 		if sreplen > 2 then
-			local srepeat = (mod_samples__info[(currentSample-1)*6+5][1]*256 + mod_samples__info[(currentSample-1)*6+5][2])*2
-			local sample = mod_sampleDecoded[currentSample]
+			local srepeat = samples__info[currentSample][5]*2
+			local sample = sampleDecoded[currentSample]
 			local ecx = srepeat*zoomEditor/(#sample/screenWidth)
 			local edx = (srepeat+sreplen)*zoomEditor/(#sample/screenWidth)
 			love.graphics.setColor(1, 1, 0, 0.02)
@@ -490,7 +501,7 @@ function love.draw()
 	love.graphics.print("CurrentPattern: " .. currentPattern, 200, 0)
 	love.graphics.print("Position: " .. editor.getPosition(), 600, 0)
 	love.graphics.print("Position: " .. patternPosition, 400, 0)
-	--love.graphics.print("ModPosition: " .. (mod_song__position[currentPattern+1] or 0), 550, 0)
+	--love.graphics.print("ModPosition: " .. (song__position[currentPattern+1] or 0), 550, 0)
 	love.graphics.print("BPM: " .. bpm, 200, 100)
 	love.graphics.print("Tickets: " .. ticksPerLine, 400, 100)
 end

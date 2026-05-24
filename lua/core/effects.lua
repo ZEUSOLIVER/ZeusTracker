@@ -3,12 +3,12 @@ effects = {}
 
 function effects.nextPattern()
 	currentPattern = currentPattern+1
-	counterY = 0
-	if mod_song__position[currentPattern] == nil then
+	if song__position[currentPattern] == nil then
 		currentPattern = 1
 		counterY = 0
 	end
-	patternPosition = (64-currentPosition)*mod_song__position[currentPattern]
+	patternPosition = (64-currentPosition)*song__position[currentPattern]
+	counterY = 0
 	currentPosition = 0
 	tickets = -1
 end
@@ -103,9 +103,6 @@ function effects.applyPosEffects(effect, param, channel)
 end
 
 function effects.applyPreEffects(effect, param, channel)
-	if effect == 0xD then
-		effects.nextPattern()
-	end
 	if effect == 0xF then
 		effects.ticksAndBpm(param)
 	end

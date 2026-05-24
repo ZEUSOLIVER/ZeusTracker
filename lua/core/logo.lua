@@ -44,7 +44,9 @@ function drawStars(scale, zoom)
         local z = star.z + zoom
         local sx = 200 + math.floor((star.x * scale) / z )
         local sy = 200 + math.floor((star.y * scale) / z )
-        love.graphics.rectangle("fill", sx, sy, 1, 1)
+	if sx < screenWidth and sy < screenHeight then
+		love.graphics.rectangle("fill", sx, sy, 1, 1)
+	end
     end
 end
 

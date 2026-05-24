@@ -225,7 +225,7 @@ function editor.drawPattern(q)
 	for y = 0, 17 do
 		for x = 0, numChannels-1 do
 			local data = (y+patternPosition)*(numChannels*4) + x*4
-			if y+patternPosition < 64*(mod_song__position[currentPattern]+1) then
+			if y+patternPosition < 64*(song__position[currentPattern]+1) then
 				if y == barPosition and editor_mod then
 					love.graphics.setColor(1, 0, 0, 0.1)
 					love.graphics.rectangle("fill", gridPositionX, gridPositionY+barPosition*20, gridX, 20)
@@ -238,10 +238,10 @@ function editor.drawPattern(q)
 					love.graphics.rectangle("fill", 20+(cursorPos-1)*33+selectedChannel*4*25, gridPositionY+barPosition*20, (cursorPos == 3) and 10 or 20, 20)
 				end
 				love.graphics.setColor(1, 1, 1)
-				local b1 = mod_data_pattern[data+1]
-				local b2 = mod_data_pattern[data+2]
-				local b3 = mod_data_pattern[data+3]
-				local b4 = mod_data_pattern[data+4]
+				local b1 = data_pattern[data+1]
+				local b2 = data_pattern[data+2]
+				local b3 = data_pattern[data+3]
+				local b4 = data_pattern[data+4]
 				local period = bit.bor(bit.lshift(bit.band(b1, 0x0F), 8), b2)
 				local noteK
 				for i=0, #note do
@@ -308,24 +308,24 @@ end
 
 function processTrackerTick()
 	if tickets == 0 then
-		if patternPosition >= 64*(mod_song__position[currentPattern]+1) then
+		if patternPosition >= 64*(song__position[currentPattern]+1) then
 			editor.resetPosition()
 			currentPattern = currentPattern+1
-			if mod_song__position[currentPattern] == nil then
+			if song__position[currentPattern] == nil then
 				currentPattern = 1
 				tickets = -1
 			end
-			patternPosition = 64*mod_song__position[currentPattern]
+			patternPosition = 64*song__position[currentPattern]
 			editor.incCounter(0)
 		end
 		for channel=0, numChannels-1 do
 			local base = patternPosition*numChannels*4 + channel*4
-			--print(base, mod_data_pattern[base+1])
-			--print(currentPattern, patternPosition, 64*(mod_song__position[currentPattern]+1)+1, "realPosition Pattern: " .. mod_song__position[currentPattern])
-			local b1 = mod_data_pattern[base+1]
-			local b2 = mod_data_pattern[base+2]
-			local b3 = mod_data_pattern[base+3]
-			local b4 = mod_data_pattern[base+4]
+			--print(base, data_pattern[base+1])
+			--print(currentPattern, patternPosition, 64*(song__position[currentPattern]+1)+1, "realPosition Pattern: " .. song__position[currentPattern])
+			local b1 = data_pattern[base+1]
+			local b2 = data_pattern[base+2]
+			local b3 = data_pattern[base+3]
+			local b4 = data_pattern[base+4]
 			local period = bit.bor(bit.lshift(bit.band(b1, 0x0F), 8), b2)
 			local instrument = bit.bor(bit.band(b1, 0xF0), bit.rshift(bit.band(b3, 0xF0), 4))
 			local effect = bit.band(b3, 0x0F)
@@ -345,8 +345,8 @@ function processTrackerTick()
 						channels[channel+1][2] = period
 						channels[channel+1][3] = 1
 						channels[channel+1][4] = 1
-						channels[channel+1][8] = (mod_samples__info[(channels[channel+1][1]-1)*6+5][1]*256 + mod_samples__info[(channels[channel+1][1]-1)*6+5][2])*2
-						channels[channel+1][9] = (mod_samples__info[(channels[channel+1][1]-1)*6+6][1]*256 + mod_samples__info[(channels[channel+1][1]-1)*6+6][2])*2
+						channels[channel+1][8] = samples__info[channels[channel+1][1]][5]*2
+						channels[channel+1][9] = samples__info[channels[channel+1][1]][6]*2
 					end
 				end
 			end
@@ -357,11 +357,16 @@ function processTrackerTick()
 	else
 		for channel=0, numChannels-1 do
 			local base = patternPosition*numChannels*4 + channel*4
-			local b3 = mod_data_pattern[base+3]
-			local b4 = mod_data_pattern[base+4]
+			local b3 = data_pattern[base+3]
+			local b4 = data_pattern[base+4]
 			local effect = bit.band(b3, 0x0F)
 			local param = b4
 			effects.applyPosEffects(effect, param, channel+1)
+			if effect == 0xD then
+				if tickets+1 == ticksPerLine then
+					effects.nextPattern()
+				end
+			end
 		end
 	end
 	tickets = tickets + 1
@@ -391,7 +396,7 @@ function editor.channelPlay(qChannels)
 			for channel = 0, qChannels-1 do
 				local currentChannel = channels[channel+1]
 				if currentChannel then
-					local sample = mod_sampleDecoded[currentChannel[1]]
+					local sample = sampleDecoded[currentChannel[1]]
 					if sample then
 						local pitch = currentChannel[2]
 						--pitch = math.max(113, math.min(856, pitch))
@@ -531,23 +536,23 @@ function editor.keyMap(key, sampleNum, channels)
 		if key == "delete" then
 			if editor_mod and not fileSearch then
 				local data = (barPosition+patternPosition)*(numChannels*4) + selectedChannel*4
-				mod_data_pattern[data+1] = 0
-				mod_data_pattern[data+2] = 0
-				mod_data_pattern[data+3] = 0
-				mod_data_pattern[data+4] = 0
+				data_pattern[data+1] = 0
+				data_pattern[data+2] = 0
+				data_pattern[data+3] = 0
+				data_pattern[data+4] = 0
 			end
 			renderPattern = true
 		end
 		if key == numHex[i] and editor_mod then
 			local base = (patternPosition+barPosition)*numChannels*4 + selectedChannel*4
 			if cursorPos == 3 then
-				mod_data_pattern[base+cursorPos] = bit.bor(bit.band(mod_data_pattern[base+cursorPos], 0xF0), numHex[key])
+				data_pattern[base+cursorPos] = bit.bor(bit.band(data_pattern[base+cursorPos], 0xF0), numHex[key])
 			end
 			if cursorPos == 4 then
-				mod_data_pattern[base+4] = bit.bor(bit.lshift(numHex[key], 4), bit.band(mod_data_pattern[base+4], 0x0F))
+				data_pattern[base+4] = bit.bor(bit.lshift(numHex[key], 4), bit.band(data_pattern[base+4], 0x0F))
 			end
 			if cursorPos == 5 then
-				mod_data_pattern[base+4] = bit.bor(numHex[key], bit.band(mod_data_pattern[base+4], 0xF0))
+				data_pattern[base+4] = bit.bor(numHex[key], bit.band(data_pattern[base+4], 0xF0))
 			end
 			renderPattern = true
 		end
@@ -555,18 +560,18 @@ function editor.keyMap(key, sampleNum, channels)
 			--editor.REALTIME_PLAY_SAMPLE(keyMap[key], sampleNum, 44010, 1)
 			if editor_mod and not fileSearch then
 				local data = (barPosition+patternPosition)*(numChannels*4) + selectedChannel*4
-				mod_data_pattern[data+3] = bit.bor(bit.lshift(bit.band(sampleNum, 0x0F), 4), bit.band(mod_data_pattern[data+3], 0x0F))
-				mod_data_pattern[data+1] = bit.band(sampleNum, 0xF0)
-				mod_data_pattern[data+1] = bit.rshift(bit.band(keyMap[key], 0xF00), 8)
-				mod_data_pattern[data+2] = bit.band(keyMap[key], 0xFF)
+				data_pattern[data+3] = bit.bor(bit.lshift(bit.band(sampleNum, 0x0F), 4), bit.band(data_pattern[data+3], 0x0F))
+				data_pattern[data+1] = bit.band(sampleNum, 0xF0)
+				data_pattern[data+1] = bit.rshift(bit.band(keyMap[key], 0xF00), 8)
+				data_pattern[data+2] = bit.band(keyMap[key], 0xFF)
 				barPosition = barPosition+1
 			end
 			channels[selectedChannel+1][1] = sampleNum
 			channels[selectedChannel+1][2] = keyMap[key]
 			channels[selectedChannel+1][3] = 1
 			channels[selectedChannel+1][4] = 1
-			channels[selectedChannel+1][8] = (mod_samples__info[(channels[selectedChannel+1][1]-1)*6+5][1]*256 + mod_samples__info[(channels[selectedChannel+1][1]-1)*6+5][2])*2
-			channels[selectedChannel+1][9] = (mod_samples__info[(channels[selectedChannel+1][1]-1)*6+6][1]*256 + mod_samples__info[(channels[selectedChannel+1][1]-1)*6+6][2])*2
+			channels[selectedChannel+1][8] = samples__info[channels[selectedChannel+1][1]][5]*2
+			channels[selectedChannel+1][9] = samples__info[channels[selectedChannel+1][1]][6]*2
 			renderPattern = true
 		end
 	end

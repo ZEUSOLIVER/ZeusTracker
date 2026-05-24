@@ -13,39 +13,45 @@ function mod.load(path)
 
 	local dataSize = #data
 
-	mod_title = data:sub(0+1, 20)
+	title = data:sub(0+1, 20)
 	for i=1, 31 do
 		local offset = 20+(30*(i-1))
-		mod_samples__info[(i-1)*6+1] = {data:sub(offset+1, offset+22)}
-		mod_samples__info[(i-1)*6+2] = {data:byte(offset+23, offset+24)}
-		mod_samples__info[(i-1)*6+3] = data:byte(offset+25, offset+25)
-		mod_samples__info[(i-1)*6+4] = {data:byte(offset+26, offset+26)}
-		mod_samples__info[(i-1)*6+5] = {data:byte(offset+27, offset+28)}
-		mod_samples__info[(i-1)*6+6] = {data:byte(offset+29, offset+30)}
+		samples__info[i][1] = {data:sub(offset+1, offset+22)}
+		local cal1 = {data:byte(offset+23, offset+24)}
+		samples__info[i][2] = cal1[1]*256+cal1[2]
+		samples__info[i][3] = data:byte(offset+25, offset+25)
+		samples__info[i][4] = data:byte(offset+26, offset+26)
+		local cal2 = {data:byte(offset+27, offset+28)}
+		samples__info[i][5] = cal2[1]*256+cal2[2]
+		local cal3 = {data:byte(offset+29, offset+30)}
+		samples__info[i][6] = cal3[1]*256+cal3[2]
 	end
 	local songLength = data:byte(951)
 	--print(songLength)
-	mod_song__length[1] = songLength
-	mod_underfined[1] = data:byte(952)
-	mod_song__position = {data:byte(953, 1080)}
-	mod_underfined2 = data:sub(1081, 1084) --
-	if mod_underfined2 == "M.K." or mod_underfined2 == "4CHN" or mod_underfined2 == "FLT4" then
+	song__length[1] = songLength
+	underfined[1] = data:byte(952)
+	song__position = {data:byte(953, 1080)}
+	underfined2 = data:sub(1081, 1084) --
+	if underfined2 == "M.K." or underfined2 == "4CHN" or underfined2 == "FLT4" then
 		signature_value = 1024
 		numChannels = 4
-	elseif mod_underfined2 == "6CHN" then
+	elseif underfined2 == "6CHN" then
 		signature_value = 1536
 		numChannels = 6
-	elseif mod_underfined2 == "8CHN" or mod_underfined2 == "FLT8" or mod_underfined2 == "CD81"then
+	elseif underfined2 == "8CHN" or underfined2 == "FLT8" or underfined2 == "CD81"then
 		signature_value = 2048
 		numChannels = 8
-	elseif mod_underfined2 == "16CH" then
+	elseif underfined2 == "16CH" then
 		signature_value = 4096
 		numChannels = 16
+	elseif underfined2 == "32CH" then
+		signature_value = 8192
+		numChannels = 32
 	end
-	--print(mod_underfined2)
+	print(underfined2)
 	local maxPat = 0
 	for i=1, songLength do
-		local p = mod_song__position[i] or 0
+		local p = song__position[i] or 0
 		if p > maxPat then maxPat = p end
 	end
 	local numPatterns = maxPat+1
@@ -61,10 +67,10 @@ function mod.load(path)
 			k=k+1
 		end
 	end
-	mod_data_pattern = out
+	data_pattern = out
 	local offset = pattern_length
 	for i=1, 31 do
-		local sample_length = (mod_samples__info[(i-1)*6+2][1]*256+mod_samples__info[(i-1)*6+2][2])*2
+		local sample_length = samples__info[i][2]*2
 		local out = {}
 		local k = 1
 		local chunkSize = 4024
@@ -76,7 +82,7 @@ function mod.load(path)
 				k=k+1
 			end
 		end
-		mod_sample_data[i] = out
+		sample_data[i] = out
 		offset = offset+sample_length
 	end
 end
