@@ -564,7 +564,9 @@ function editor.keyMap(key, sampleNum, channels)
 				data_pattern[data+1] = bit.band(sampleNum, 0xF0)
 				data_pattern[data+1] = bit.rshift(bit.band(keyMap[key], 0xF00), 8)
 				data_pattern[data+2] = bit.band(keyMap[key], 0xFF)
-				barPosition = barPosition+1
+				if not auto_play then
+					barPosition = barPosition+1
+				end
 			end
 			channels[selectedChannel+1][1] = sampleNum
 			channels[selectedChannel+1][2] = keyMap[key]
