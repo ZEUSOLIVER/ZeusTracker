@@ -7,7 +7,7 @@ local cursorPos = 1
 counterY = 0
 local selectedChannel = 0
 local barPosition = 0
-local type_interpolate = "none"
+local type_interpolate = "linear"
 local noteOffset = 0
 local localNoteOffset = 0
 local finetune = 0
@@ -315,8 +315,8 @@ function interpolate(sample, pos, volume)
         return 0
     end
     local frac = pos - i
-    local a = sample[i]-volume or 0
-    local b = sample[i+1]-volume or 0
+    local a = (sample[i] or 0)*volume
+    local b = (sample[i+1] or 0)*volume
     return a*(1-frac) + b*frac
 end
 
@@ -334,7 +334,7 @@ function processTrackerTick()
 		if patternPosition >= rowsInPattern*(song__position[currentPattern]+1) then
 			editor.resetPosition()
 			currentPattern = currentPattern+1
-			if song__position[currentPattern] == nil then
+			if song__position[currentPattern] == nil or currentPattern > songLength then
 				currentPattern = 1
 				tickets = -1
 			end
@@ -371,6 +371,7 @@ function processTrackerTick()
 						channels[channel+1][2] = period
 						channels[channel+1][3] = 1
 						channels[channel+1][4] = 1
+						channels[channel+1][5] = false
 						channels[channel+1][8] = samples__info[channels[channel+1][1]][5]*2
 						channels[channel+1][9] = samples__info[channels[channel+1][1]][6]*2
 					end
@@ -389,8 +390,12 @@ function processTrackerTick()
 			local param = b4
 			effects.applyPosEffects(effect, param, channel+1)
 			if effect == 0xD then
-				if tickets+1 == ticksPerLine then
-					effects.nextPattern()
+				if tickets+1 >= ticksPerLine then
+					effects.nextPattern(param)
+				end
+			elseif effect == 0xB then
+				if tickets+1 >= ticksPerLine then
+					effects.defineCurrentPattern(param)
 				end
 			end
 		end

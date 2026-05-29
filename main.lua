@@ -23,6 +23,7 @@ tickets = 0
 ticksPerLine = 6
 bpm = 125
 rowsInPattern = 64
+songLength = 1
 
 screenWidth = love.graphics.getWidth()-40
 screenHeight = love.graphics.getHeight()/2
@@ -138,7 +139,7 @@ function love.load()
 	local font = love.graphics.newFont("gfx/Font.ttf", 12)
 	love.graphics.setFont(font)
 	editor.sendBuffer({{0, 0}}, 1)
-	editor.initEngine(4900, 0.707)
+	editor.initEngine(2900, 0.707)
 	
 	numChannels = 8
 	for i=1, 31 do

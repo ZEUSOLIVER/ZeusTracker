@@ -2,7 +2,7 @@ channel = {}
 
 function channel.init(range, channels)
 	for i=1, range do
-		channels[i] = {0, 1, 64, 1, 0, 0, 0, 0, 0, true, false}
+		channels[i] = {0, 1, 64, 1, false, 0, 0, 0, 0, true, false}
 	end
 end
 
@@ -20,11 +20,14 @@ function channel.specView(ch, x, y)
 	local offsetY = volume*(sample[pos] or 0)
 	local length = (#sample < 40 and #sample > 0) and #sample or 40
 	local offset = 100/length
+	local buffer = {}
+	for i = 1, length do
+		buffer[i] = 0
+	end
 	local lines = {}
 	for i = length, 0, -1 do
 		lines[i*2+1] = x+(i-1)*offset+2
 		lines[i*2+2] = y+volume*(sample[pos+i] or 0)
-		offsetY = volume*(sample[pos+i] or 0)
 	end
 	love.graphics.line(lines)
 	love.graphics.setColor(1, 1, 1)

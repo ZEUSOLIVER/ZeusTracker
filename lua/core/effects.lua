@@ -1,14 +1,25 @@
 effects = {}
 --local editor = require("lua/core/editor")
 
-function effects.nextPattern()
-	currentPattern = currentPattern+1
+function effects.defineCurrentPattern(pat)
+	currentPattern = pat+1
 	if song__position[currentPattern] == nil then
 		currentPattern = 1
 	end
-	patternPosition = (rowsInPattern-currentPosition)*song__position[currentPattern]
+	patternPosition = rowsInPattern*song__position[currentPattern]
 	counterY = 0
 	currentPosition = 0
+	tickets = -1
+end
+
+function effects.nextPattern(param)
+	currentPattern = currentPattern+1
+	if song__position[currentPattern] == nil or currentPattern > songLength then
+		currentPattern = 1
+	end
+	patternPosition = (rowsInPattern-currentPosition)*song__position[currentPattern]+param
+	counterY = param
+	currentPosition = param
 	tickets = -1
 end
 
@@ -84,9 +95,9 @@ function effects.volumeSlide(x, y, channel)
 end
 
 function effects.applyPosEffects(effect, param, channel)
-	if effect == 0x0 and param > 0 then
+	--[[if effect == 0x0 and param > 0 then
 		--effects.volume(param)
-	end
+	end]]
 	if effect == 0x1 then
 		effects.portUp(param, channel)
 	end

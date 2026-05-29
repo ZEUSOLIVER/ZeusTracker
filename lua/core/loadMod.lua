@@ -26,9 +26,9 @@ function mod.load(path)
 		local cal3 = {data:byte(offset+29, offset+30)}
 		samples__info[i][6] = cal3[1]*256+cal3[2]
 	end
-	local songLength = data:byte(951)
+	songLength = data:byte(951)
+	print(songLength)
 	--print(songLength)
-	song__length[1] = songLength
 	underfined[1] = data:byte(952)
 	song__position = {data:byte(953, 1080)}
 	underfined2 = data:sub(1081, 1084) --

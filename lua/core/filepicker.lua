@@ -13,7 +13,7 @@ local q = 1
 function filePicker.load(path)
 	counterFolders = 0
 	modstable = {"./.."} 
-	--[[local command 
+	local command 
 	if package.config:sub(1,1) == "\\" then
 		command = 'dir "' .. path .. '" /b *.mod' 
 	else
@@ -24,7 +24,7 @@ function filePicker.load(path)
 		table.insert(modstable, line) 
 		counterFolders = counterFolders+1
 	end
-	table.remove(modstable, 2)]]
+	table.remove(modstable, 2)
 	local command 
 	if package.config:sub(1,1) == "\\" then
 		command = 'dir "' .. path .. '" /b *.mod' 
