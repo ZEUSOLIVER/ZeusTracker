@@ -1,6 +1,13 @@
 effects = {}
 --local editor = require("lua/core/editor")
 
+local sineTable = {
+    0,  24,  49,  74,  97, 120, 141, 161, 
+  180, 197, 212, 224, 235, 244, 250, 253, 
+  255, 253, 250, 244, 235, 224, 212, 197, 
+  180, 161, 141, 120,  97,  74,  49,  24
+}
+
 function effects.defineCurrentPattern(pat)
 	currentPattern = pat+1
 	if song__position[currentPattern] == nil then
@@ -12,9 +19,27 @@ function effects.defineCurrentPattern(pat)
 	tickets = -1
 end
 
-function effects.vibrato(x, y, channel)
-	channels[channel][13] = x
-	channels[channel][14] = y
+function effects.vibratoSet(x, y, channel)
+	if x > 0 or y > 0 then
+		channels[channel][13] = x
+		channels[channel][14] = y
+	end
+end
+
+function effects.vibratoProcess(channel)
+	local speed = channels[channel][13]
+	local depth = channels[channel][14]
+	local period = channels[channel][2]
+	local vibratoPos = channels[channel][12]
+	local tableIndex = vibratoPos%32
+	local sineValue = sineTable[tableIndex+1]
+	if vibratoPos >= 32 then
+		sineValue = sineValue*-1
+	end
+	local vibratoValue = (sineValue*depth)/128
+	channels[channel][15] = vibratoValue
+	channels[channel][12] = (vibratoPos+speed)%64
+	--print("Channel: " .. channel+1 .. " speed: " .. speed .. " depth: " .. depth .. " VibratoValue: " .. vibratoValue .. " VibratoPos: " .. channels[channel][12])
 end
 
 function effects.nextPattern(param)
@@ -42,7 +67,7 @@ function effects.portDown(param, channel)
 	channels[channel][2] = pitch
 end
 
-function effects.tonePort(param, channel)
+function effects.tonePort(channel)
 	local currentPitch = channels[channel][2]
 	local targetPitch = channels[channel][5]
 	local speed = channels[channel][6] or 0
@@ -110,9 +135,20 @@ function effects.applyPosEffects(effect, param, channel)
 		effects.portDown(param, channel)
 	end
 	if effect == 0x3 then
-		effects.tonePort(param, channel)
+		effects.tonePort(channel)
+	end
+	if effect == 0x4 then
+		effects.vibratoProcess(channel)
 	end
 	if effect == 0xA then
+		effects.volumeSlide(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), channel)
+	end
+	if effect == 0x5 then
+		effects.tonePort(channel)
+		effects.volumeSlide(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), channel)
+	end
+	if effect == 0x6 then
+		effects.vibratoProcess(channel)
 		effects.volumeSlide(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), channel)
 	end
 end
@@ -125,8 +161,18 @@ function effects.applyPreEffects(effect, param, channel)
 		effects.volume(param, channel)
 	end
 	if effect == 0x4 then
-		effects.vibrato(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), channel)
+		effects.vibratoSet(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), channel)
+	else
+		if channels[channel][15] ~= 0 and effect ~= 0x6 then
+			channels[channel][12] = 0
+			channels[channel][13] = 0
+			channels[channel][14] = 0
+			channels[channel][15] = 0
+		end
 	end
+	--[[if channel == 1 then
+		print(channels[channel][15])
+	end]]
 	if effect == 0x9 then
 		effects.samplePosition(param, channel)
 	end
