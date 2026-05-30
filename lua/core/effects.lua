@@ -12,6 +12,11 @@ function effects.defineCurrentPattern(pat)
 	tickets = -1
 end
 
+function effects.vibrato(x, y, channel)
+	channels[channel][13] = x
+	channels[channel][14] = y
+end
+
 function effects.nextPattern(param)
 	currentPattern = currentPattern+1
 	if song__position[currentPattern] == nil or currentPattern > songLength then
@@ -118,6 +123,9 @@ function effects.applyPreEffects(effect, param, channel)
 	end
 	if effect == 0xC then
 		effects.volume(param, channel)
+	end
+	if effect == 0x4 then
+		effects.vibrato(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), channel)
 	end
 	if effect == 0x9 then
 		effects.samplePosition(param, channel)

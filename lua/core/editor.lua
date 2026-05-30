@@ -2,6 +2,13 @@ local editor = {}
 
 local effects = require("lua/core/effects")
 
+local sineTable = {
+    0,  24,  49,  74,  97, 120, 141, 161, 
+  180, 197, 212, 224, 235, 244, 250, 253, 
+  255, 253, 250, 244, 235, 224, 212, 197, 
+  180, 161, 141, 120,  97,  74,  49,  24
+}
+
 local samplesUntilNextTick = 0
 local cursorPos = 1
 counterY = 0
@@ -374,6 +381,10 @@ function processTrackerTick()
 						channels[channel+1][5] = false
 						channels[channel+1][8] = samples__info[channels[channel+1][1]][5]*2
 						channels[channel+1][9] = samples__info[channels[channel+1][1]][6]*2
+						channels[channel+1][12] = 0
+						channels[channel+1][13] = 0
+						channels[channel+1][14] = 0
+						channels[channel+1][15] = 0
 					end
 				end
 			end
@@ -427,19 +438,34 @@ function editor.channelPlay(qChannels)
 			for channel = 0, qChannels-1 do
 				local currentChannel = channels[channel+1]
 				if currentChannel then
+					local speed = currentChannel[13] or 0
+					local depth = currentChannel[14] or 0
+					if speed ~= 0 or depth ~= 0 then
+						local period = currentChannel[2] or 0
+						local vibratoPos = currentChannel[12] or 0
+						local tableIndex = vibratoPos%32
+						local sineValue = sineTable[tableIndex+1]
+						if vibratoPos >= 32 then
+							sineValue = sineValue*-1
+						end
+						local vibratoValue = (sineValue*depth)/128
+						currentChannel[15] = vibratoValue
+						currentChannel[12] = (vibratoPos+speed)%64
+						--print("Channel: " .. channel+1 .. " speed: " .. speed .. " depth: " .. depth .. " VibratoValue: " .. vibratoValue .. " VibratoPos: " .. currentChannel[12])
+					end
 					local sample = sampleDecoded[currentChannel[1]]
 					if sample then
-						local pitch = currentChannel[2]
-						--pitch = math.max(113, math.min(856, pitch))
+						local period = currentChannel[2]+currentChannel[15]
+						--period = math.max(113, math.min(856, period))
 						local volume = (currentChannel[10]) and currentChannel[3] or 0
 						local pos = currentChannel[4]
 						local srepeat = currentChannel[8]
 						local sreplen = currentChannel[9]
 
-						local frequency = 7093789.2 / (pitch * 2)
-						local advance = frequency/sampleRate
+						local pitch = 7093789.2 / (period * 2)
+						local advance = pitch/sampleRate
 						advance = math.min(4.0, advance)
-						--local advance = localNoteOffset/pitch
+						--local advance = localNoteOffset/period
 						if type_interpolate == "linear" then
 							if channel == 0 or channel == 2 or channel == 4 or channel == 6 then
 								mixLeft = mixLeft+interpolate(sample, pos, volume)
@@ -516,6 +542,7 @@ end
 
 function editor.resetBar()
 	barPosition = 0
+	counterY = 0
 end
 
 function editor.barDown()

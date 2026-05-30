@@ -2,7 +2,7 @@ channel = {}
 
 function channel.init(range, channels)
 	for i=1, range do
-		channels[i] = {0, 1, 64, 1, false, 0, 0, 0, 0, true, false}
+		channels[i] = {0, 1, 64, 1, false, 0, 0, 0, 0, true, false, 0, 0, 0, 0}
 	end
 end
 
