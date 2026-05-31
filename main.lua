@@ -156,8 +156,8 @@ function love.load()
 
 	samples__info[1][1] = ""
 	samples__info[1][2] = 4
-	samples__info[1][3] = 0
-	samples__info[1][4] = 0
+	samples__info[1][3] = 2^(0/96.0)
+	samples__info[1][4] = 1
 	samples__info[1][5] = 0
 	samples__info[1][6] = 4
 

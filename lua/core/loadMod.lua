@@ -19,8 +19,11 @@ function mod.load(path)
 		samples__info[i][1] = {data:sub(offset+1, offset+22)}
 		local cal1 = {data:byte(offset+23, offset+24)}
 		samples__info[i][2] = cal1[1]*256+cal1[2]
-		samples__info[i][3] = data:byte(offset+25, offset+25)
-		samples__info[i][4] = data:byte(offset+26, offset+26)
+		local cal4 = bit.band(data:byte(offset+25, offset+25), 0x0F)
+		if cal4 > 7 then cal4 = cal4 - 16 end
+		local mult = 2^(-cal4/96.0)
+		samples__info[i][3] = mult
+		samples__info[i][4] = data:byte(offset+26, offset+26)/64
 		local cal2 = {data:byte(offset+27, offset+28)}
 		samples__info[i][5] = cal2[1]*256+cal2[2]
 		local cal3 = {data:byte(offset+29, offset+30)}

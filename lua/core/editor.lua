@@ -368,16 +368,18 @@ function processTrackerTick()
 				else
 					if instrument > 0 then
 						channels[channel+1][1] = instrument
-						channels[channel+1][2] = period
-						channels[channel+1][3] = 1
-						channels[channel+1][4] = 1
-						channels[channel+1][5] = false
-						channels[channel+1][8] = samples__info[channels[channel+1][1]][5]*2
-						channels[channel+1][9] = samples__info[channels[channel+1][1]][6]*2
-						channels[channel+1][12] = 0
-						--[[channels[channel+1][13] = 0
-						channels[channel+1][14] = 0
-						channels[channel+1][15] = 0]]
+						channels[channel+1][3] = samples__info[instrument][4]
+						channels[channel+1][8] = samples__info[instrument][5]*2
+						channels[channel+1][9] = samples__info[instrument][6]*2
+						if period > 0 then
+							channels[channel+1][2] = period*samples__info[instrument][3]
+							channels[channel+1][4] = 1
+							channels[channel+1][5] = false
+							channels[channel+1][12] = 0
+							--[[channels[channel+1][13] = 0
+							channels[channel+1][14] = 0
+							channels[channel+1][15] = 0]]
+						end
 					end
 				end
 			end
