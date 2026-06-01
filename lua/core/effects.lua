@@ -34,7 +34,7 @@ function effects.vibratoProcess(channel)
 	local tableIndex = vibratoPos%32
 	local sineValue = sineTable[tableIndex+1]
 	if vibratoPos >= 32 then
-		sineValue = sineValue*-1
+		sineValue = -sineValue
 	end
 	local vibratoValue = (sineValue*depth)/128
 	channels[channel][15] = vibratoValue

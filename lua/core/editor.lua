@@ -185,17 +185,17 @@ function editor.localNoteOffset(offset)
 end
 
 function editor.newQueueableSource(sampleRate1)
-	sourceSound = love.audio.newQueueableSource(sampleRate1, 8, 2, 8)
+	sourceSound = love.audio.newQueueableSource(sampleRate1, 16, 2, 8)
 end
 
 function editor.sendBuffer(buffer, chunkSize)
-    	local sd = love.sound.newSoundData(chunkSize, sampleRate, 8, 2)
+    	local sd = love.sound.newSoundData(chunkSize, sampleRate, 16, 2)
 	if not sourceSound then
 		editor.newQueueableSource(sampleRate)
 	end
     	for i = 0, chunkSize-1, 1 do
-	    sd:setSample(i, 1, buffer[i+1][1]/256)
-	    sd:setSample(i, 2, buffer[i+1][2]/256)
+	    sd:setSample(i, 1, buffer[i+1][1])
+	    sd:setSample(i, 2, buffer[i+1][2])
     	end
 	--[[if sourceSound.getFreeBufferCount then
 		local free = sourceSound:getFreeBufferCount()
@@ -315,8 +315,8 @@ function interpolate(sample, pos, volume)
         return 0
     end
     local frac = pos - i
-    local a = (sample[i] or 0)*volume
-    local b = (sample[i+1] or 0)*volume
+    local a = (sample[i] or 0)/128*volume
+    local b = (sample[i+1] or 0)/128*volume
     return a*(1-frac) + b*frac
 end
 
@@ -427,7 +427,7 @@ function editor.channelPlay(qChannels)
 				end
 				samplesUntilNextTick = samplesUntilNextTick - 1
 			end
-			
+			--local qPlayingChannel = 0
 			local mixLeft = 0
 			local mixRight = 0
 			for channel = 0, qChannels-1 do
@@ -447,20 +447,17 @@ function editor.channelPlay(qChannels)
 						advance = math.min(4.0, advance)
 						--local advance = localNoteOffset/period
 						if type_interpolate == "linear" then
-							if channel == 0 or channel == 2 or channel == 4 or channel == 6 then
+							if (channel%4 == 0 or channel%4 == 3) then
 								mixLeft = mixLeft+interpolate(sample, pos, volume)
-							elseif channel == 1 or channel == 3 or channel == 5 or channel == 7 then
+							else
 								mixRight = mixRight+interpolate(sample, pos, volume)
 							end
 						elseif type_interpolate == "none" then
-							if channel == 0 or channel == 2 or channel == 4 or channel == 6 then
-								--local mixed = lowpass((sample[math.floor(pos)] or 0), 4000, sampleRate)
-								--mixLeft = mixLeft+mixed*volume
-								mixLeft = mixLeft+(sample[math.floor(pos)] or 0)*volume
-							elseif channel == 1 or channel == 3 or channel == 5 or channel == 7 then
-								--local mixed = lowpass((sample[math.floor(pos)] or 0), 4000, sampleRate)
-								--mixRight = mixRight+mixed*volume
-								mixRight = mixRight+(sample[math.floor(pos)] or 0)*volume
+							if (channel%4 == 0 or channel%4 == 3) then
+								
+								mixLeft = mixLeft+(sample[math.floor(pos)] or 0)/128*volume
+							else
+								mixRight = mixRight+(sample[math.floor(pos)] or 0)/128*volume
 							end
 						end
 						pos = pos+advance
@@ -478,11 +475,14 @@ function editor.channelPlay(qChannels)
 							end
 						end
 						currentChannel[4] = pos
+						--qPlayingChannel = qPlayingChannel+1
 					end
 				end
 			end
-			mixLeft = mixLeft
-			mixRight = mixRight
+			--print(mixLeft, mixRight)
+			mixLeft = math.tanh(mixLeft*0.5)
+			mixRight = math.tanh(mixRight*0.5)
+			--qPlayingChannel = 0
 			--periodTone = mixLeft+mixRight
 			buffer[i] = {mixLeft, mixRight}
 		end
