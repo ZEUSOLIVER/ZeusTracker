@@ -32,8 +32,8 @@ function channel.specView(ch, x, y)
 	love.graphics.line(lines)
 	love.graphics.setColor(1, 1, 1)
 	love.graphics.print(ch, x+(ch-1), y-40)
-	
 	love.graphics.setColor(0, offsetY/10, 0)
+	--local lastfreq = volume*(sample[pos-1] or 0)
 	love.graphics.rectangle("fill", x, y+20, 4, -math.abs(offsetY*2))
 	love.graphics.setColor(1, 1, 1)
 end
