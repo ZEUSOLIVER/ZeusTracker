@@ -28,6 +28,8 @@ songLength = 1
 screenWidth = love.graphics.getWidth()-40
 screenHeight = love.graphics.getHeight()/2
 
+local t = 0
+
 title = ""
 samples__info = {}
 song__length = {}
@@ -46,6 +48,8 @@ canvas:setFilter("linear", "nearest")
 canvasPattern = love.graphics.newCanvas( )
 canvasPattern:setFilter("linear", "nearest")
 canvasUI = love.graphics.newCanvas( )
+canvasUI:setFilter("linear", "nearest")
+canvasChannelSpec = love.graphics.newCanvas()
 canvasUI:setFilter("linear", "nearest")
 
 renderPattern = false
@@ -68,7 +72,6 @@ local font = love.graphics.newImageFont("gfx/imagefont.png",
     "123456789.,!?-+/():;%&`'*#=[]\"")
 
 local offsetKey = 214
-t=0
 
 local zoomEditor = 1
 local zoomEditorTx = 1
@@ -254,8 +257,8 @@ function love.update(dt)
 		mouseSelected = ""
 	end
 
+	t = t + 1
 	editor.channelPlay(numChannels)
-	t=t+1
 	--logo.update(dt/2+math.min(1, (math.abs(periodTone)/2020)))
 	logo.update(dt/2)
 	--screenWidth = love.graphics.getWidth()-40
@@ -437,9 +440,9 @@ function love.wheelmoved(x, y)
 	end
 end
 
-distance = 0
+local distance = 0
 
-function love.draw()
+function love.draw(dt)
 	love.graphics.clear(0, 0, 0)
 	love.graphics.setColor(1, 1, 1)
 	logo.draw("", 0, 0, 0, 0, 0, 500, 20)
@@ -485,9 +488,11 @@ function love.draw()
 		end
 		for i = 1, numChannels do
 			if i < 9 then
-				channel.specView(i, 20+(i-1)*100, 200)
+				channel.specView(i, 20+(i-1)*100, 200, t)
 			end
 		end
+		love.graphics.setColor(1, 1, 1)
+		love.graphics.draw(canvasChannelSpec, 0, 0)
 		love.graphics.draw(canvasPattern, 0, 0)
 	end
 	if showSample then

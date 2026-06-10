@@ -17,7 +17,6 @@ rectangle = {
 stars = {}
 
 function logo.update(dt)
-    t = t + dt
     for i, star in ipairs(stars) do
         star.z = star.z - 50*dt
         if star.z <= 1 then
