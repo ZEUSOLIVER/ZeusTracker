@@ -1,4 +1,5 @@
 channel = {}
+local barLines = {}
 
 function channel.init(range, channels)
 	for i=1, range do
@@ -32,9 +33,17 @@ function channel.specView(ch, x, y)
 	love.graphics.line(lines)
 	love.graphics.setColor(1, 1, 1)
 	love.graphics.print(ch, x+(ch-1), y-40)
-	love.graphics.setColor(0, offsetY/10, 0)
 	--local lastfreq = volume*(sample[pos-1] or 0)
-	love.graphics.rectangle("fill", x, y+20, 4, -math.abs(offsetY*2))
+	local barYPos = barLines[ch] or 0
+	love.graphics.setColor(0, barYPos/10, 0)
+	local offsetYMath = math.abs(offsetY*2)
+	if offsetYMath >= barYPos then
+		barYPos = offsetYMath
+	else
+		barYPos = math.max(barYPos-4, 0)
+	end
+	love.graphics.rectangle("fill", x, y+20, 4, -barYPos)
+	barLines[ch] = barYPos
 	love.graphics.setColor(1, 1, 1)
 end
 
