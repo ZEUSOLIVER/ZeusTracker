@@ -360,11 +360,13 @@ function processTrackerTick()
 			--print("ticks: " .. ticksPerLine .. " bpm: " .. bpm)
 			if period > 0 then
 				if effect == 0x3 then
-					if param > 0 then
-						channels[channel+1][6] = param
-						channels[channel+1][3] = 1
+					if instrument > 0 then
+						if param > 0 then
+							channels[channel+1][6] = param
+							channels[channel+1][3] = 1
+						end
+						channels[channel+1][5] = period*samples__info[instrument][3]
 					end
-					channels[channel+1][5] = period
 				else
 					if instrument > 0 then
 						channels[channel+1][1] = instrument
