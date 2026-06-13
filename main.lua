@@ -38,7 +38,7 @@ song__position = {0}
 underfined2 = "M.K."
 signature_value = 1024
 data_pattern = {}
-sample_data = {{128, 128, 128, 128, 127, 127, 127, 127}}
+sample_data = {{128, 128, 128, 128, 127, 127, 127, 127, 127, 127, 64, 0, 0}}
 sampleDecoded = {}
 sampleDecoded2 = {}
 
@@ -113,9 +113,9 @@ function oscilationWave(ch, screenWidth, screenHeight)
 	local wavePrecision = math.min(sampleLength/2, math.floor(zoomEditorTx/zoomEditorT))+1
 	--love.graphics.setColor(0, 1, 180/255)
 	local lines = {}
-	for x=1, sampleLength-1, wavePrecision do
+	for x=1, sampleLength, wavePrecision do
 		local xx = 20+(x-1)*zoomEditorT
-		local yy = 200+screenHeight+sampleDecoded[currentSample][x+1]/2
+		local yy = 200+screenHeight+sampleDecoded[currentSample][x]/2
 		for i = 0, wavePrecision-1 do
 			lines[(x+i-1)*2+1] = xx
 			lines[(x+i-1)*2+2] = yy
@@ -142,7 +142,7 @@ function love.load()
 	local font = love.graphics.newFont("gfx/Font.ttf", 12)
 	love.graphics.setFont(font)
 	editor.sendBuffer({{0, 0}}, 1)
-	editor.initEngine(2900, 0.707)
+	editor.initEngine(4900, 0.707)
 	
 	numChannels = 8
 	for i=1, 31 do
@@ -162,7 +162,7 @@ function love.load()
 	samples__info[1][3] = 2^(0/96.0)
 	samples__info[1][4] = 1
 	samples__info[1][5] = 0
-	samples__info[1][6] = 4
+	samples__info[1][6] = 6
 
 	for i = 1, numChannels*4*rowsInPattern do
 		data_pattern[i] = 0
@@ -255,6 +255,22 @@ function love.update(dt)
 		mouseSelected = "button1"
 	else
 		mouseSelected = ""
+	end
+
+	local mLeftButton = love.mouse.isDown(1)
+	if mLeftButton and showSample and x > 20 and y > screenHeight+100 and x < screenWidth then
+		local sample = sampleDecoded[currentSample] or {}
+		local length = #sample
+		local x1 = #sample/zoomEditor
+		local x2 = screenWidth/(x-20)
+		local x3 = x1/x2
+		local y1 = screenHeight/(y-500)
+		local cursorRation = #sample/(zoomEditor*400)
+		for i = -cursorRation, cursorRation do
+			sample[math.min(math.floor(x3+i+1), #sample)] = 600/y1
+		end
+		--sample[math.min(math.floor(x3+1), #sample)] = 600/y1
+		oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
 	end
 
 	t = t + 1
@@ -457,10 +473,10 @@ function love.draw(dt)
 	else
 		ys = -80
 	end
-	logo.ASCIIZ(x, y, z, angle_x, angle_y, 500, distance)
+	--[[logo.ASCIIZ(x, y, z, angle_x, angle_y, 500, distance)
 	logo.ASCIIE(x, y, z, angle_x, angle_y, 500, distance)
 	logo.ASCIIU(x, y, z+17, angle_x, angle_y, 500, distance)
-	logo.ASCIIS(x, y, z+27, angle_x, angle_y, 500, distance)
+	logo.ASCIIS(x, y, z+27, angle_x, angle_y, 500, distance)]]
 	filePicker.draw(t)
 	love.graphics.setLineWidth(1)
 	love.graphics.setLineStyle("rough")
@@ -508,7 +524,7 @@ function love.draw(dt)
 		end
 		local sample = sampleDecoded[searchSample]
 		if sample then
-			local pos = ch[4]*zoomEditor/(#sample/screenWidth)
+			local pos = math.min(screenWidth, ch[4]*zoomEditor/(#sample/screenWidth))
 			love.graphics.line(20+pos, 100+screenHeight, 20+pos, 200+screenHeight+80)
 		end
 		local sreplen = samples__info[currentSample][6]*2
@@ -516,7 +532,7 @@ function love.draw(dt)
 			local srepeat = samples__info[currentSample][5]*2
 			local sample = sampleDecoded[currentSample]
 			local ecx = srepeat*zoomEditor/(#sample/screenWidth)
-			local edx = (srepeat+sreplen)*zoomEditor/(#sample/screenWidth)
+			local edx = math.min(screenWidth, (srepeat+sreplen)*zoomEditor/(#sample/screenWidth))
 			love.graphics.setColor(1, 1, 0, 0.02)
 			love.graphics.rectangle("fill", 20+ecx, 100+screenHeight, edx-ecx, 100+80)
 			love.graphics.setColor(1, 1, 0)

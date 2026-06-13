@@ -3,7 +3,8 @@ local barLines = {}
 
 function channel.init(range, channels)
 	for i=1, range do
-		channels[i] = {0, 1, 64, 1, false, 0, 0, 0, 0, true, false, 0, 0, 0, 0}
+		channels[i] = {
+			0, 1, 64, 1, false, 0, 0, 0, 0, true, false, 0, 0, 0, 0, {}}
 	end
 end
 
@@ -45,7 +46,7 @@ function channel.specView(ch, x, y, t)
 		if offsetYMath >= barYPos then
 			barYPos = offsetYMath
 		else
-			barYPos = math.max(barYPos-6, 0)
+			barYPos = math.max(barYPos-4, 0)
 		end
 		love.graphics.rectangle("fill", x, y+20, 4, -barYPos)
 		barLines[ch] = barYPos

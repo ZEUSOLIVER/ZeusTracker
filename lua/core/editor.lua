@@ -193,7 +193,7 @@ function editor.sendBuffer(buffer, chunkSize)
 	if not sourceSound then
 		editor.newQueueableSource(sampleRate)
 	end
-    	for i = 0, chunkSize-1, 1 do
+    	for i = 0, chunkSize-1 do
 	    sd:setSample(i, 1, buffer[i+1][1])
 	    sd:setSample(i, 2, buffer[i+1][2])
     	end
@@ -480,6 +480,7 @@ function editor.channelPlay(qChannels)
 						--qPlayingChannel = qPlayingChannel+1
 					end
 				end
+				channels[channel+1][16][i] = {mixLeft+mixRight}
 			end
 			--print(mixLeft, mixRight)
 			mixLeft = math.tanh(mixLeft*0.5)
