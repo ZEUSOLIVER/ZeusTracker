@@ -32,9 +32,11 @@ function channel.specView(ch, x, y, t)
 			buffer[i] = 0
 		end
 		local lines = {}
+		local xp = 0
 		for i = length, 0, -1 do
-			lines[i*2+1] = x+(i-1)*offset+2
-			lines[i*2+2] = y+volume*(sample[pos+i] or 0)
+			lines[i*2+1] = x+i*offset
+			lines[i*2+2] = y+volume*-(sample[pos+i+1] or 0)
+			xp = xp+1
 		end
 		love.graphics.line(lines)
 		love.graphics.setColor(1, 1, 1)

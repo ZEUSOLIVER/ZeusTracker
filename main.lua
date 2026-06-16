@@ -38,7 +38,7 @@ song__position = {0}
 underfined2 = "M.K."
 signature_value = 1024
 data_pattern = {}
-sample_data = {{128, 128, 128, 128, 127, 127, 127, 127, 127, 127, 64, 0, 0}}
+sample_data = {{58, 127, 127, 127, 128, 128, 127, 127, 127, 127, 64, 180, 180}, {127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128}}
 sampleDecoded = {}
 sampleDecoded2 = {}
 
@@ -115,7 +115,7 @@ function oscilationWave(ch, screenWidth, screenHeight)
 	local lines = {}
 	for x=1, sampleLength, wavePrecision do
 		local xx = 20+(x-1)*zoomEditorT
-		local yy = 200+screenHeight+sampleDecoded[currentSample][x]/2
+		local yy = 190+screenHeight-sampleDecoded[currentSample][x]/1.43
 		for i = 0, wavePrecision-1 do
 			lines[(x+i-1)*2+1] = xx
 			lines[(x+i-1)*2+2] = yy
@@ -163,6 +163,12 @@ function love.load()
 	samples__info[1][4] = 1
 	samples__info[1][5] = 0
 	samples__info[1][6] = 6
+	samples__info[2][1] = "triangle"
+	samples__info[2][2] = 4
+	samples__info[2][3] = 2^(0/96.0)
+	samples__info[2][4] = 1
+	samples__info[2][5] = 0
+	samples__info[2][6] = 39
 
 	for i = 1, numChannels*4*rowsInPattern do
 		data_pattern[i] = 0
@@ -267,7 +273,7 @@ function love.update(dt)
 		local y1 = screenHeight/(y-500)
 		local cursorRation = #sample/(zoomEditor*400)
 		for i = -cursorRation, cursorRation do
-			sample[math.min(math.floor(x3+i+1), #sample)] = 600/y1
+			sample[math.min(math.floor(x3+i+1), #sample)] = 400/-y1
 		end
 		--sample[math.min(math.floor(x3+1), #sample)] = 600/y1
 		oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
