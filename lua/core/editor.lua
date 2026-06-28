@@ -631,10 +631,11 @@ function editor.keyMap(key, sampleNum, channels)
 				end
 			end
 			currentKey = (currentKey+1)%numChannels
-			local playChannel = (selectedChannel+currentKey)%(numChannels-1)+1
-			if playChannel%4 == 0 then
+			local playChannel = (selectedChannel+currentKey-1)%numChannels+1
+			print(playChannel)
+			if playChannel%4 == 1 then
 				channels[playChannel][16] = 1
-			elseif playChannel%4 == 3 then
+			elseif playChannel%4 == 4 then
 				channels[playChannel][17] = 1
 			else
 				channels[playChannel][16] = 1
