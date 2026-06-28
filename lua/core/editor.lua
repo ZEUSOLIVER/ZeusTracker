@@ -1,5 +1,7 @@
 local editor = {}
 
+local ffi = require("ffi")
+
 local effects = require("lua/core/effects")
 
 local samplesUntilNextTick = 0
@@ -12,6 +14,8 @@ local noteOffset = 0
 local localNoteOffset = 0
 local finetune = 0
 local currentPosition = 0
+local offsetCh = 0
+local currentKey = 0
 local keyMap = {
 	["q"] = 428,
 	["w"] = 381,
@@ -113,11 +117,12 @@ local yPos = 220
 patternPositionY = 0
 
 local biquadFilter = {
-    -- Memória da onda (passado)
+    -- Memory
     x1 = 0, x2 = 0,
     y1 = 0, y2 = 0,
+    x1_2 = 0, x2_2 = 0,
+    y1_2 = 0, y2_2 = 0,
     
-    -- Coeficientes matemáticos
     b0 = 0, b1 = 0, b2 = 0,
     a1 = 0, a2 = 0
 }
@@ -158,18 +163,22 @@ function biquadFilter:process(buffer)
 	local x0 = buffer[i][2]
 
         local y0 = self.b0 * x0 
-                 + self.b1 * self.x1 
-                 + self.b2 * self.x2
-                 - self.a1 * self.y1 
-                 - self.a2 * self.y2
+                 + self.b1 * self.x1_2 
+                 + self.b2 * self.x2_2
+                 - self.a1 * self.y1_2 
+                 - self.a2 * self.y2_2
 
-        self.x2 = self.x1
-        self.x1 = x0
-        self.y2 = self.y1
-        self.y1 = y0
+        self.x2_2 = self.x1_2
+        self.x1_2 = x0
+        self.y2_2 = self.y1_2
+        self.y1_2 = y0
 
         buffer[i][2] = y0
     end
+end
+
+function editor.getOffsetCh()
+	return offsetCh
 end
 
 function editor.initEngine(f, r)
@@ -223,7 +232,7 @@ function editor.drawPattern(q)
 	end]]
 	--yPos = yPos*patternPosition
 	for y = 0, 17 do
-		for x = 0, numChannels-1 do
+		for x = 0, 7 do
 			local data = (y+patternPosition)*(numChannels*4) + x*4
 			if playerFormatXM then
 				data = (y+patternPosition)*(numChannels*5) + x*5
@@ -308,15 +317,15 @@ function editor.incCounter(num)
 	counterY = (counterY + 1)*num
 end
 
-function interpolate(sample, pos, volume)
+function interpolate(sample, pos, volume, pan)
     if not sample then return 0 end
     local i = math.floor(pos)
     if i < 1 or i >= #sample then
         return 0
     end
     local frac = pos - i
-    local a = (sample[i] or 0)/128*volume
-    local b = (sample[i+1] or 0)/128*volume
+    local a = (sample[i] or 0)/128*volume*pan
+    local b = (sample[i+1] or 0)/128*volume*pan
     return a*(1-frac) + b*frac
 end
 
@@ -363,12 +372,24 @@ function processTrackerTick()
 					if instrument > 0 then
 						if param > 0 then
 							channels[channel+1][6] = param
-							channels[channel+1][3] = 1
+							channels[channel+1][3] = samples__info[instrument][4]
 						end
 						channels[channel+1][5] = period*samples__info[instrument][3]
 					end
 				else
 					if instrument > 0 then
+						channels[channel+1][16] = 1
+						channels[channel+1][17] = 1
+						if channel%4 == 0 then
+							channels[channel+1][16] = 1
+							channels[channel+1][17] = 0
+						elseif channel%4 == 3 then
+							channels[channel+1][17] = 1
+							channels[channel+1][16] = 0
+						else
+							channels[channel+1][16] = 1
+							channels[channel+1][17] = 1
+						end
 						channels[channel+1][1] = instrument
 						channels[channel+1][3] = samples__info[instrument][4]
 						channels[channel+1][8] = samples__info[instrument][5]*2
@@ -416,9 +437,10 @@ function processTrackerTick()
 	end
 end
 
+local buffer = {}
+
 function editor.channelPlay(qChannels)
 	if sourceSound and sourceSound:getFreeBufferCount() > 0 then
-		local buffer = {}
 		local chunkSize = 1024
 		for i = 1, chunkSize do
 			if auto_play then
@@ -440,6 +462,8 @@ function editor.channelPlay(qChannels)
 						local period = currentChannel[2]+currentChannel[15]
 						--period = math.max(113, math.min(856, period))
 						local volume = (currentChannel[10]) and currentChannel[3] or 0
+						local panLeft = currentChannel[16]
+						local panRight = currentChannel[17]
 						local pos = currentChannel[4]
 						local srepeat = currentChannel[8]
 						local sreplen = currentChannel[9]
@@ -449,18 +473,11 @@ function editor.channelPlay(qChannels)
 						advance = math.min(4.0, advance)
 						--local advance = localNoteOffset/period
 						if type_interpolate == "linear" then
-							if (channel%4 == 0 or channel%4 == 3) then
-								mixLeft = mixLeft+interpolate(sample, pos, volume)
-							else
-								mixRight = mixRight+interpolate(sample, pos, volume)
-							end
+							mixLeft = mixLeft+interpolate(sample, pos, volume, panLeft)
+							mixRight = mixLeft+interpolate(sample, pos, volume, panRight)
 						elseif type_interpolate == "none" then
-							if (channel%4 == 0 or channel%4 == 3) then
-								
-								mixLeft = mixLeft+(sample[math.floor(pos)] or 0)/128*volume
-							else
-								mixRight = mixRight+(sample[math.floor(pos)] or 0)/128*volume
-							end
+							mixLeft = mixLeft+(sample[math.floor(pos)] or 0)/128*volume*panLeft
+							mixRight = mixRight+(sample[math.floor(pos)] or 0)/128*volume*panRight
 						end
 						pos = pos+advance
 						if sreplen > 2 then
@@ -480,7 +497,6 @@ function editor.channelPlay(qChannels)
 						--qPlayingChannel = qPlayingChannel+1
 					end
 				end
-				channels[channel+1][16][i] = {mixLeft+mixRight}
 			end
 			--print(mixLeft, mixRight)
 			mixLeft = math.tanh(mixLeft*0.5)
@@ -488,6 +504,8 @@ function editor.channelPlay(qChannels)
 			--qPlayingChannel = 0
 			--periodTone = mixLeft+mixRight
 			buffer[i] = {mixLeft, mixRight}
+			--buffer[(i-1)*2+1] = mixLeft
+			--buffer[(i-1)*2+2] = mixRight
 		end
 		biquadFilter:process(buffer)
 		--print(buffer[1], buffer[chunkSize])
@@ -541,7 +559,7 @@ end
 function editor.barUp()
 	barPosition = math.max(0, barPosition - 1)
 	if barPosition == 0 then
-		if patternPosition > 0 then
+		if counterY > 0 then
 			patternPosition = patternPosition - 1
 			counterY = counterY - 1
 		end
@@ -564,6 +582,9 @@ function editor.right()
 	cursorPos = cursorPos + 1
 	if cursorPos == 6 then
 		selectedChannel = math.min(numChannels-1, selectedChannel + 1)
+		if selectedChannel == numChannels-1 then
+			offsetCh = offsetCh+1
+		end
 		cursorPos = 1
 	end
 end
@@ -609,12 +630,22 @@ function editor.keyMap(key, sampleNum, channels)
 					barPosition = barPosition+1
 				end
 			end
-			channels[selectedChannel+1][1] = sampleNum
-			channels[selectedChannel+1][2] = keyMap[key]
-			channels[selectedChannel+1][3] = 1
-			channels[selectedChannel+1][4] = 1
-			channels[selectedChannel+1][8] = samples__info[channels[selectedChannel+1][1]][5]*2
-			channels[selectedChannel+1][9] = samples__info[channels[selectedChannel+1][1]][6]*2
+			currentKey = (currentKey+1)%numChannels
+			local playChannel = (selectedChannel+currentKey)%(numChannels-1)+1
+			if playChannel%4 == 0 then
+				channels[playChannel][16] = 1
+			elseif playChannel%4 == 3 then
+				channels[playChannel][17] = 1
+			else
+				channels[playChannel][16] = 1
+				channels[playChannel][17] = 1
+			end
+			channels[playChannel][1] = sampleNum
+			channels[playChannel][2] = keyMap[key]
+			channels[playChannel][3] = 1
+			channels[playChannel][4] = 1
+			channels[playChannel][8] = samples__info[channels[playChannel][1]][5]*2
+			channels[playChannel][9] = samples__info[channels[playChannel][1]][6]*2
 			renderPattern = true
 		end
 	end

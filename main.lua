@@ -114,8 +114,9 @@ function oscilationWave(ch, screenWidth, screenHeight)
 	--love.graphics.setColor(0, 1, 180/255)
 	local lines = {}
 	for x=1, sampleLength, wavePrecision do
+		local sample = (sampleDecoded[currentSample] ~= nil) and sampleDecoded[currentSample][x] or 0
 		local xx = 20+(x-1)*zoomEditorT
-		local yy = 190+screenHeight-sampleDecoded[currentSample][x]/1.43
+		local yy = 190+screenHeight-sample/1.43
 		for i = 0, wavePrecision-1 do
 			lines[(x+i-1)*2+1] = xx
 			lines[(x+i-1)*2+2] = yy
@@ -138,11 +139,11 @@ function love.load()
 	modstable = filePicker.load("./")
 	editor.noteOffset(856)
 	editor.localNoteOffset(offsetKey)
-	--love.graphics.setFont(font)
+	love.graphics.setFont(font)
 	local font = love.graphics.newFont("gfx/Font.ttf", 12)
 	love.graphics.setFont(font)
 	editor.sendBuffer({{0, 0}}, 1)
-	editor.initEngine(4900, 0.707)
+	editor.initEngine(8900, 0.407)
 	
 	numChannels = 8
 	for i=1, 31 do
@@ -175,8 +176,8 @@ function love.load()
 	end
 	editor.init()
 	channel.init(numChannels, channels)
-	currentPosition = 0
 	currentPattern = 1
+	currentPosition = 0
 	patternPosition = 0
 	for i=1, 31 do
 		local length = sample_data[i] or 0
@@ -510,7 +511,8 @@ function love.draw(dt)
 		end
 		for i = 1, numChannels do
 			if i < 9 then
-				channel.specView(i, 20+(i-1)*100, 200, t)
+				local offsetCh = editor.getOffsetCh()
+				channel.specView(i+offsetCh, 20+(i-1)*100, 200, t, offsetCh)
 			end
 		end
 		love.graphics.setColor(1, 1, 1)

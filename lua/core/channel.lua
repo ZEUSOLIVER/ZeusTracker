@@ -3,15 +3,14 @@ local barLines = {}
 
 function channel.init(range, channels)
 	for i=1, range do
-		channels[i] = {
-			0, 1, 64, 1, false, 0, 0, 0, 0, true, false, 0, 0, 0, 0, {}}
+		channels[i] = {0, 1, 64, 1, false, 0, 0, 0, 0, true, false, 0, 0, 0, 0, 0, 0}
 	end
 end
 
-function channel.specView(ch, x, y, t)
-	if t%2 == 0 then
+function channel.specView(ch, x, y, t, offsetCh)
+	if t%2 == 0 and channels[ch] ~= nil then
 		love.graphics.setCanvas(canvasChannelSpec)
-		if ch == 1 then
+		if ch == 1+offsetCh then
 			love.graphics.clear(0, 0, 0, 0)
 		end
 		love.graphics.setColor(0, 0.4, 0.4)
@@ -33,12 +32,18 @@ function channel.specView(ch, x, y, t)
 		end
 		local lines = {}
 		local xp = 0
-		for i = length, 0, -1 do
-			lines[i*2+1] = x+i*offset
-			lines[i*2+2] = y+volume*-(sample[pos+i+1] or 0)
+		local offsetA = y
+		for i = 0, length do
+			--[[lines[i*2+1] = x+i*offset
+			lines[i*2+2] = y+volume*-(sample[pos+i+1] or 0)]]
+			local xx = x+(i+1)*offset
+			local yy = y+volume*-(sample[pos+i+1] or 0)
+			love.graphics.line(x+i*offset, offsetA, xx-2, yy)
+			--love.graphics.rectangle("fill", xx-2, yy, 1, 1)
+			offsetA = y+volume*-(sample[pos+i+1] or 0)
 			xp = xp+1
 		end
-		love.graphics.line(lines)
+		--love.graphics.line(lines)
 		love.graphics.setColor(1, 1, 1)
 		love.graphics.print(ch, x+(ch-1), y-40)
 		--local lastfreq = volume*(sample[pos-1] or 0)

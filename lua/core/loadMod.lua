@@ -44,6 +44,9 @@ function mod.load(path)
 	elseif underfined2 == "8CHN" or underfined2 == "FLT8" or underfined2 == "CD81"then
 		signature_value = 2048
 		numChannels = 8
+	elseif underfined2 == "14CH" then
+		signature_value = 3584
+		numChannels = 14
 	elseif underfined2 == "16CH" then
 		signature_value = 4096
 		numChannels = 16
