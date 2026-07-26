@@ -248,6 +248,8 @@ function editor.drawPattern(q)
 					love.graphics.setColor(1, 0, 0.4, 0.6)
 					if cursorPos > 3 then
 						love.graphics.rectangle("fill", 24+(cursorPos+3)*10+selectedChannel*4*25, gridPositionY+barPosition*20, 10, 20)
+					elseif cursorPos == 1 then
+						love.graphics.rectangle("fill", 20+(cursorPos-1)*33+selectedChannel*4*25, gridPositionY+barPosition*20, 30, 20)
 					else
 						love.graphics.rectangle("fill", 20+(cursorPos-1)*33+selectedChannel*4*25, gridPositionY+barPosition*20, (cursorPos == 3) and 10 or 20, 20)
 					end

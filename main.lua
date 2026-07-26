@@ -143,7 +143,7 @@ function love.load()
 	editor.localNoteOffset(offsetKey)
 	love.graphics.setFont(font)
 	local font = love.graphics.newFont("gfx/Font.ttf", 12)
-	love.graphics.setFont(font)
+	--love.graphics.setFont(font)
 	editor.sendBuffer({{0, 0}}, 1)
 	editor.initEngine(5900, 0.407)
 	
