@@ -19,26 +19,26 @@ function effects.defineCurrentPattern(pat)
 	tickets = -1
 end
 
-function effects.vibratoSet(x, y, channel)
+function effects.vibratoSet(x, y, ch)
 	if x > 0 or y > 0 then
-		channels[channel][13] = x
-		channels[channel][14] = y
+		channel_effects_vibratorSpeed[ch] = x
+		channel_effects_vibratorDepth[ch] = y
 	end
 end
 
-function effects.vibratoProcess(channel)
-	local speed = channels[channel][13]
-	local depth = channels[channel][14]
-	local period = channels[channel][2]
-	local vibratoPos = channels[channel][12]
+function effects.vibratoProcess(ch)
+	local speed = channel_effects_vibratorSpeed[ch]
+	local depth = channel_effects_vibratorDepth[ch]
+	local period = channel_period[ch]
+	local vibratoPos = channel_effects_vibratorPosition[ch]
 	local tableIndex = vibratoPos%32
 	local sineValue = sineTable[tableIndex+1]
 	if vibratoPos >= 32 then
 		sineValue = -sineValue
 	end
 	local vibratoValue = (sineValue*depth)/128
-	channels[channel][15] = vibratoValue
-	channels[channel][12] = (vibratoPos+speed)%64
+	channel_effects_vibratorValue[ch] = vibratoValue
+	channel_effects_vibratorPosition[ch] = (vibratoPos+speed)%64
 	--print("Channel: " .. channel+1 .. " speed: " .. speed .. " depth: " .. depth .. " VibratoValue: " .. vibratoValue .. " VibratoPos: " .. channels[channel][12])
 end
 
@@ -53,24 +53,24 @@ function effects.nextPattern(param)
 	tickets = -1
 end
 
-function effects.portUp(param, channel)
-	local pitch = channels[channel][2]
+function effects.portUp(param, ch)
+	local pitch = channel_period[ch]
 	pitch = pitch - param
 	pitch = math.max(113, pitch)
-	channels[channel][2] = pitch
+	channel_period[ch] = pitch
 end
 
-function effects.portDown(param, channel)
-	local pitch = channels[channel][2]
+function effects.portDown(param, ch)
+	local pitch = channel_period[ch]
 	pitch = pitch + param
 	pitch = math.min(856, pitch)
-	channels[channel][2] = pitch
+	channel_period[ch] = pitch
 end
 
-function effects.tonePort(channel)
-	local currentPitch = channels[channel][2]
-	local targetPitch = channels[channel][5]
-	local speed = channels[channel][6] or 0
+function effects.tonePort(ch)
+	local currentPitch = channel_period[ch]
+	local targetPitch = channel_effects_portamentoTargetPitch[ch]
+	local speed = channel_effects_portamentoSpeed[ch] or 0
 	
 	if not targetPitch or currentPitch == targetPitch then
 		return
@@ -88,15 +88,15 @@ function effects.tonePort(channel)
 		end
 	end
 
-	channels[channel][2] = currentPitch
+	channel_period[ch] = currentPitch
 end
 
-function effects.samplePosition(param, channel)
+function effects.samplePosition(param, ch)
 	if param > 0 then	
-		channels[channel][7] = param
+		channel_effects_samplePosition[ch] = param
 	end
-	local positionEffect = channels[channel][7] or 0
-	channels[channel][4] = positionEffect*256
+	local positionEffect = channel_effects_samplePosition[ch] or 0
+	channel_position[ch] = positionEffect*256
 end
 
 function effects.ticksAndBpm(param)
@@ -109,72 +109,95 @@ function effects.ticksAndBpm(param)
 	end
 end
 
-function effects.volume(vol, channel)
-	channels[channel][3] = vol/64
+function effects.volume(vol, ch)
+	channel_volume[ch] = vol/64 or 0
 end
 
-function effects.volumeSlide(x, y, channel)
-	local volume = channels[channel][3]
+function effects.volumeSlide(x, y, ch)
+	local volume = channel_volume[ch]
 	if x > 0 then
 		volume = volume + x / 64
 	elseif y > 0 then
 		volume = volume - y / 64
 	end
-	volume = math.max(0.0, math.min(1.0, volume))
-	channels[channel][3] = volume
+	channel_volume[ch] = math.max(0.0, math.min(1.0, volume))
 end
 
-function effects.applyPosEffects(effect, param, channel)
+function effects.fineVolumeSlideUp(param, ch)
+	if param > 0 then
+		local volumeCh = channel_volume[ch]
+		volumeCh = volumeCh + param/64
+		channel_volume[ch] = math.max(0, math.min(1.0, volumeCh))
+	end
+end
+
+function effects.fineVolumeSlideDown(param, ch)
+	if param > 0 then
+		local volumeCh = channel_volume[ch]
+		volumeCh = volumeCh - param/64
+		channel_volume[ch] = math.max(0, math.min(1.0, volumeCh))
+	end
+end
+
+function effects.applyPosEffects(effect, param, ch)
 	--[[if effect == 0x0 and param > 0 then
 		--effects.volume(param)
 	end]]
 	if effect == 0x1 then
-		effects.portUp(param, channel)
+		effects.portUp(param, ch)
 	end
 	if effect == 0x2 then
-		effects.portDown(param, channel)
+		effects.portDown(param, ch)
 	end
 	if effect == 0x3 then
-		effects.tonePort(channel)
+		effects.tonePort(ch)
 	end
 	if effect == 0x4 then
-		effects.vibratoProcess(channel)
+		effects.vibratoProcess(ch)
 	end
 	if effect == 0xA then
-		effects.volumeSlide(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), channel)
+		effects.volumeSlide(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), ch)
 	end
 	if effect == 0x5 then
-		effects.tonePort(channel)
-		effects.volumeSlide(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), channel)
+		effects.tonePort(ch)
+		effects.volumeSlide(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), ch)
 	end
 	if effect == 0x6 then
-		effects.vibratoProcess(channel)
-		effects.volumeSlide(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), channel)
+		effects.vibratoProcess(ch)
+		effects.volumeSlide(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), ch)
 	end
 end
 
-function effects.applyPreEffects(effect, param, channel)
+function effects.applyPreEffects(effect, param, ch)
 	if effect == 0xF then
 		effects.ticksAndBpm(param)
 	end
 	if effect == 0xC then
-		effects.volume(param, channel)
+		effects.volume(param, ch)
 	end
 	if effect == 0x4 then
-		effects.vibratoSet(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), channel)
+		effects.vibratoSet(bit.rshift(bit.band(param, 0xF0), 4), bit.band(param, 0x0F), ch)
 	else
-		if channels[channel][15] ~= 0 and effect ~= 0x6 then
-			channels[channel][12] = 0
-			channels[channel][13] = 0
-			channels[channel][14] = 0
-			channels[channel][15] = 0
+		if channel_effects_vibratorValue[ch] ~= 0 and effect ~= 0x6 then
+			channel_effects_vibratorPosition[ch] = 0
+			channel_effects_vibratorSpeed[ch] = 0
+			channel_effects_vibratorDepth[ch] = 0
+			channel_effects_vibratorValue[ch] = 0
 		end
 	end
 	--[[if channel == 1 then
-		print(channels[channel][15])
+		print(channel_effects_vibratorValue[ch])
 	end]]
 	if effect == 0x9 then
-		effects.samplePosition(param, channel)
+		effects.samplePosition(param, ch)
+	end
+	if effect == 0xE then
+		if bit.band(param, 0xF0) == 0xA0 then
+			effects.fineVolumeSlideUp(bit.band(param, 0x0F), ch)
+		end
+		if bit.band(param, 0xF0) == 0xB0 then
+			effects.fineVolumeSlideDown(bit.band(param, 0x0F), ch)
+		end
 	end
 end
 

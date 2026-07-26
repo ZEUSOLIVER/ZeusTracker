@@ -12,6 +12,7 @@ local xm = require("lua/core/loadXM")
 --local effects = require("lua/core/effects")
 local editor = require("lua/core/editor")
 local logo = require("lua/core/logo")
+local importSamplesFAF = require("lua/core/importSamplesFAF")
 
 local fileSearch = true
 editor_mod = false
@@ -76,6 +77,7 @@ local offsetKey = 214
 local zoomEditor = 1
 local zoomEditorTx = 1
 local showSample = false
+local loadSamples = false
 
 function sampleDecode(data)
     local out = {}
@@ -143,20 +145,20 @@ function love.load()
 	local font = love.graphics.newFont("gfx/Font.ttf", 12)
 	love.graphics.setFont(font)
 	editor.sendBuffer({{0, 0}}, 1)
-	editor.initEngine(8900, 0.407)
+	editor.initEngine(5900, 0.407)
 	
-	numChannels = 8
+	numChannels = 4
 	for i=1, 31 do
 		samples__info[i] = {"", 0, 0, 0, 0, 0}
 	end
-	for i = 1, 31 do
+	--[[for i = 1, 31 do
 		samples__info[i][1] = ""
 		samples__info[i][2] = 0
 		samples__info[i][3] = 0
 		samples__info[i][4] = 0
 		samples__info[i][5] = 0
 		samples__info[i][6] = 0
-	end
+	end]]
 
 	samples__info[1][1] = ""
 	samples__info[1][2] = 4
@@ -180,9 +182,9 @@ function love.load()
 	currentPosition = 0
 	patternPosition = 0
 	for i=1, 31 do
-		local length = sample_data[i] or 0
-		if length ~= 0 then
-			sampleDecoded[i] = sampleDecode(sample_data[i])
+		local sample = sample_data[i] or 0
+		if sample ~= 0 then
+			sampleDecoded[i] = sampleDecode(sample)
 		end
 	end
 	oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
@@ -209,29 +211,35 @@ end
 
 function love.update(dt)
 	if selected_file ~= "" then
-		editor.init()
-		channel.init(numChannels, channels)
 		if string.sub(selected_file, #selected_file-3, #selected_file) == ".mod" then
-			playerFormatXM = false
-			mod.load(selected_file)
-			rowsInPattern = 64
-			channel.init(numChannels, channels)
-			currentPosition = 0
-			currentPattern = 1
-			counterY = 0
-			patternPosition = 64*(song__position[currentPattern])
-			for i=1, 31 do
-				local length = sample_data[i] or 0
-				if length ~= 0 then
-					sampleDecoded[i] = sampleDecode(sample_data[i])
+			if loadSamples then
+				loadSamples = false
+				importSamplesFAF.load(selected_file)
+			else
+				editor.init()
+				channel.init(numChannels, channels)
+				playerFormatXM = false
+				mod.load(selected_file)
+				love.window.setTitle("ZeusTracker - " .. title)
+				rowsInPattern = 64
+				channel.init(numChannels, channels)
+				currentPosition = 0
+				currentPattern = 1
+				counterY = 0
+				patternPosition = 64*(song__position[currentPattern])
+				for i=1, 31 do
+					local length = sample_data[i] or 0
+					if length ~= 0 then
+						sampleDecoded[i] = sampleDecode(sample_data[i])
+					end
 				end
+				editor.incCounter(0)
+				renderPattern = true
+				tickets = 0
+				loaded_mod = true
 			end
 			oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
-			editor.incCounter(0)
-			renderPattern = true
 			fileSearch = false
-			tickets = 0
-			loaded_mod = true
 			selected_file = ""
 		elseif string.sub(selected_file, #selected_file-2, #selected_file) == ".xm" then
 			playerFormatXM = true
@@ -258,8 +266,11 @@ function love.update(dt)
 	end]]
 
 	local x, y = love.mouse.getPosition()
-	if x < 60 and y < 20 then
+	local cal = screenWidth*0.09
+	if x < cal and y < 20 then
 		mouseSelected = "button1"
+	elseif x > cal+4 and x < screenWidth*0.2+screenWidth*0.2 and y < 20 then
+		mouseSelected = "button2"
 	else
 		mouseSelected = ""
 	end
@@ -304,9 +315,9 @@ function love.keypressed(key, scancode, isrepeat)
 	if key == "rctrl" then
 		if auto_play then
 			auto_play = false
-			for i = 1, numChannels do
-				channels[i][1] = 0
-				channels[i][4] = 0
+			for i = 0, numChannels-1 do
+				channel_instrument[i] = 0
+				channel_position[i] = 0
 			end
 		else
 			auto_play = true
@@ -325,9 +336,9 @@ function love.keypressed(key, scancode, isrepeat)
 			editor_mod = true
 		end
 		auto_play = false
-		for i = 1, numChannels do
-			channels[i][1] = 0
-			channels[i][4] = 0
+		for i = 0, numChannels-1 do
+			channel_instrument[i] = 0
+			channel_position[i] = 0
 		end
 		--editor.resetBar()
 		renderPattern = true
@@ -423,12 +434,18 @@ function love.mousepressed(x, y, button, istouch, presses)
 		end
 		mouseSelectedColor = 255
 	end
-	for i = 0, numChannels-1 do
+	local cal = screenWidth*0.09
+	if x > cal+4 and x < screenWidth*0.2+screenWidth*0.2 and y < 20 then
+		loadSamples = true
+		mouseSelectedColor = 255
+	end
+	local offsetCh = editor.getOffsetCh()
+	for i = 0, math.min(7, numChannels-1) do
 		if x > 20+100*i and y > 160 and x < 120+100*i and y < 220 then
-			if channels[i+1][10] then
-				channels[i+1][10] = false
+			if channel_muted[i+offsetCh] then
+				channel_muted[i+offsetCh] = false
 			else
-				channels[i+1][10] = true
+				channel_muted[i+offsetCh] = true
 			end
 		end
 	end
@@ -487,13 +504,22 @@ function love.draw(dt)
 	filePicker.draw(t)
 	love.graphics.setLineWidth(1)
 	love.graphics.setLineStyle("rough")
-	love.graphics.setColor(255, 255, 255)
+	love.graphics.setColor(1, 1, 1)
 	local x, y = love.mouse.getPosition()
 	if mouseSelected == "button1" then
 		love.graphics.setColor(120/255, 120/255, (120+mouseSelectedColor)/255)
 	end
-	love.graphics.rectangle("fill", 0, 0, screenWidth/20, 20)
-	love.graphics.print("Sample")
+	love.graphics.rectangle("fill", 0, 0, screenWidth*0.09, 20)
+	love.graphics.setColor(0, 0, 0)
+	love.graphics.print("Sample", 0, 0)
+	love.graphics.setColor(1, 1, 1)
+	if mouseSelected == "button2" then
+		love.graphics.setColor(120/255, 120/255, (120+mouseSelectedColor)/255)
+	end
+	local cal = screenWidth*0.09
+	love.graphics.rectangle("fill", cal+4, 0, screenWidth*0.2, 20)
+	love.graphics.setColor(0, 0, 0)
+	love.graphics.print("Load Samples", cal+4, 0)
 	mouseSelectedColor = 0
 	if loaded_mod then
 		love.graphics.setColor(20/255, 20/255, 120/255)
@@ -509,10 +535,10 @@ function love.draw(dt)
 			editor.drawPattern(32)
 			love.graphics.setCanvas()
 		end
-		for i = 1, numChannels do
-			if i < 9 then
+		for i = 0, numChannels-1 do
+			if i < 8 then
 				local offsetCh = editor.getOffsetCh()
-				channel.specView(i+offsetCh, 20+(i-1)*100, 200, t, offsetCh)
+				channel.specView(i+offsetCh, 20+i*100, 200, t, offsetCh)
 			end
 		end
 		love.graphics.setColor(1, 1, 1)
@@ -522,17 +548,17 @@ function love.draw(dt)
 	if showSample then
 		love.graphics.draw(canvas, 0, 0)
 		love.graphics.setColor(0, 1, 180/255)
-		local ch = nil
+		local ch1 = nil
 		local searchSample = nil
-		for channel = 1, numChannels do
-			if channels[channel][1] == currentSample then
-				searchSample = channels[channel][1]
-				ch = channels[channel]
+		for ch = 0, numChannels-1 do
+			if channel_instrument[ch] == currentSample then
+				searchSample = channel_instrument[ch]
+				ch1 = ch
 			end
 		end
 		local sample = sampleDecoded[searchSample]
 		if sample then
-			local pos = math.min(screenWidth, ch[4]*zoomEditor/(#sample/screenWidth))
+			local pos = math.min(screenWidth, channel_position[ch1]*zoomEditor/(#sample/screenWidth))
 			love.graphics.line(20+pos, 100+screenHeight, 20+pos, 200+screenHeight+80)
 		end
 		local sreplen = samples__info[currentSample][6]*2

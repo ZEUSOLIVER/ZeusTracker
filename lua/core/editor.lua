@@ -221,9 +221,10 @@ end
 function editor.drawPattern(q)
 	local gridPositionX = 20
 	local gridPositionY = 220
-	local gridX = 100*numChannels
+	local gridX = math.min(800, 100*numChannels)
 	local gridY = 360
 
+	love.graphics.setColor(1, 1, 1)
 	for gx = 0, gridX, 100 do
 		love.graphics.line(gx+gridPositionX, gridPositionY, gx+gridPositionX, gridY+gridPositionY)
 	end
@@ -232,24 +233,24 @@ function editor.drawPattern(q)
 	end]]
 	--yPos = yPos*patternPosition
 	for y = 0, 17 do
-		for x = 0, 7 do
-			local data = (y+patternPosition)*(numChannels*4) + x*4
+		for x = 0, math.min(7, numChannels-1) do
+			local data = (y+patternPosition)*(numChannels*4) + (x+offsetCh)*4
 			if playerFormatXM then
 				data = (y+patternPosition)*(numChannels*5) + x*5
-			else
-				data = (y+patternPosition)*(numChannels*4) + x*4
 			end
 			if y+patternPosition < rowsInPattern*(song__position[currentPattern]+1) then
-				if y == barPosition and editor_mod then
-					love.graphics.setColor(1, 0, 0, 0.1)
+				if y == barPosition and x == 0 then
+					love.graphics.setColor(1, 0, 0, 0.2)
+					if editor_mod then
+						love.graphics.setColor(1, 0, 0, 0.5)
+					end
 					love.graphics.rectangle("fill", gridPositionX, gridPositionY+barPosition*20, gridX, 20)
-				end
-				love.graphics.setColor(1, 0, 1, 0.01)
-				local length = 100/3
-				if cursorPos > 3 then
-					love.graphics.rectangle("fill", 24+(cursorPos+3)*10+selectedChannel*4*25, gridPositionY+barPosition*20, 10, 20)
-				else
-					love.graphics.rectangle("fill", 20+(cursorPos-1)*33+selectedChannel*4*25, gridPositionY+barPosition*20, (cursorPos == 3) and 10 or 20, 20)
+					love.graphics.setColor(1, 0, 0.4, 0.6)
+					if cursorPos > 3 then
+						love.graphics.rectangle("fill", 24+(cursorPos+3)*10+selectedChannel*4*25, gridPositionY+barPosition*20, 10, 20)
+					else
+						love.graphics.rectangle("fill", 20+(cursorPos-1)*33+selectedChannel*4*25, gridPositionY+barPosition*20, (cursorPos == 3) and 10 or 20, 20)
+					end
 				end
 				love.graphics.setColor(1, 1, 1)
 				local period
@@ -302,6 +303,9 @@ function editor.drawPattern(q)
 				if effect == 0xD then
 					love.graphics.setColor(0, 1, 1)
 				end
+				if effect == 0xE then
+					love.graphics.setColor(1, 0.4, 0.4)
+				end
 				--local varL = 0.5
 				local varL = (bit.band(y+counterY, 0x0F) == 0 or bit.band(y+counterY, 0x0F) == 4 or bit.band(y+counterY, 0x0F) == 8 or bit.band(y+counterY, 0x0F) == 12) and 1 or 0.5
 				love.graphics.print((effect ~= 0) and string.format("%X", effect) or "-", 86+x*100, yPos+y*20)
@@ -350,8 +354,8 @@ function processTrackerTick()
 			patternPosition = rowsInPattern*song__position[currentPattern]
 			editor.incCounter(0)
 		end
-		for channel=0, numChannels-1 do
-			local base = patternPosition*numChannels*4 + channel*4
+		for ch=0, numChannels-1 do
+			local base = patternPosition*numChannels*4 + ch*4
 			if formatPlayerXM then
 				data = (y+patternPosition)*(numChannels*5) + x*5
 			end
@@ -371,53 +375,52 @@ function processTrackerTick()
 				if effect == 0x3 then
 					if instrument > 0 then
 						if param > 0 then
-							channels[channel+1][6] = param
-							channels[channel+1][3] = samples__info[instrument][4]
+							channel_effects_portamentoSpeed[ch] = param
+							channel_volume[ch] = samples__info[instrument][4]
 						end
-						channels[channel+1][5] = period*samples__info[instrument][3]
+						channel_effects_portamentoTargetPitch[ch] = period*samples__info[instrument][3]
 					end
 				else
 					if instrument > 0 then
-						channels[channel+1][16] = 1
-						channels[channel+1][17] = 1
-						if channel%4 == 0 then
-							channels[channel+1][16] = 1
-							channels[channel+1][17] = 0
-						elseif channel%4 == 3 then
-							channels[channel+1][17] = 1
-							channels[channel+1][16] = 0
+						channel_volumeLeft[ch] = 1
+						channel_volumeRight[ch] = 1
+						if ch%4 == 0 then
+							channel_volumeLeft[ch] = 1
+							channel_volumeRight[ch] = 0
+						elseif ch%4 == 3 then
+							channel_volumeRight[ch] = 1
+							channel_volumeLeft[ch] = 0
 						else
-							channels[channel+1][16] = 1
-							channels[channel+1][17] = 1
+							channel_volumeLeft[ch] = 1
+							channel_volumeRight[ch] = 1
 						end
-						channels[channel+1][1] = instrument
-						channels[channel+1][3] = samples__info[instrument][4]
-						channels[channel+1][8] = samples__info[instrument][5]*2
-						channels[channel+1][9] = samples__info[instrument][6]*2
+						channel_instrument[ch] = instrument
+						channel_volume[ch] = samples__info[instrument][4]
+						channel_srepeat[ch] = samples__info[instrument][5]*2
+						channel_sreplen[ch] = samples__info[instrument][6]*2
 						if period > 0 then
-							channels[channel+1][2] = period*samples__info[instrument][3]
-							channels[channel+1][4] = 1
-							channels[channel+1][5] = false
-							channels[channel+1][12] = 0
-							--[[channels[channel+1][13] = 0
-							channels[channel+1][14] = 0
-							channels[channel+1][15] = 0]]
+							channel_period[ch] = period*samples__info[instrument][3]
+							channel_position[ch] = 1
+							--channel_effects_portamentoSpeed[ch] = 0
+							channel_effects_vibratorPosition[ch] = 0
+							--[[channel_effects_vibratorSpeed[ch] = 0
+							channel_effects_vibratorDepth[ch] = 0
+							channel_effects_vibratorValue[ch] = 0]]
 						end
 					end
 				end
 			end
-			effects.applyPreEffects(effect, param, channel+1)
+			effects.applyPreEffects(effect, param, ch)
 		end
 		editor.incrementPosition()
-		renderPattern = true
 	else
-		for channel=0, numChannels-1 do
-			local base = patternPosition*numChannels*4 + channel*4
+		for ch=0, numChannels-1 do
+			local base = patternPosition*numChannels*4 + ch*4
 			local b3 = data_pattern[base+3]
 			local b4 = data_pattern[base+4]
 			local effect = bit.band(b3, 0x0F)
 			local param = b4
-			effects.applyPosEffects(effect, param, channel+1)
+			effects.applyPosEffects(effect, param, ch)
 			if effect == 0xD then
 				if tickets+1 >= ticksPerLine then
 					effects.nextPattern(param)
@@ -434,6 +437,7 @@ function processTrackerTick()
 		patternPosition = patternPosition + 1
 		editor.incCounter(1)
 		tickets = 0
+		renderPattern = true
 	end
 end
 
@@ -454,19 +458,20 @@ function editor.channelPlay(qChannels)
 			--local qPlayingChannel = 0
 			local mixLeft = 0
 			local mixRight = 0
-			for channel = 0, qChannels-1 do
-				local currentChannel = channels[channel+1]
-				if currentChannel then
-					local sample = sampleDecoded[currentChannel[1]]
+			for ch = 0, qChannels-1 do
+				if true then
+					local sample = sampleDecoded[channel_instrument[ch]]
 					if sample then
-						local period = currentChannel[2]+currentChannel[15]
-						--period = math.max(113, math.min(856, period))
-						local volume = (currentChannel[10]) and currentChannel[3] or 0
-						local panLeft = currentChannel[16]
-						local panRight = currentChannel[17]
-						local pos = currentChannel[4]
-						local srepeat = currentChannel[8]
-						local sreplen = currentChannel[9]
+						local period = channel_period[ch]+channel_effects_vibratorValue[ch]
+						local volume = (channel_muted[ch]) and 0 or channel_volume[ch]
+						if period < 113 and period > 856 then
+							volume = 0
+						end
+						local panLeft = channel_volumeLeft[ch]
+						local panRight = channel_volumeRight[ch]
+						local pos = channel_position[ch]
+						local srepeat = channel_srepeat[ch]
+						local sreplen = channel_sreplen[ch]
 
 						local pitch = 7093789.2 / (period * 2)
 						local advance = pitch/sampleRate
@@ -481,26 +486,26 @@ function editor.channelPlay(qChannels)
 						end
 						pos = pos+advance
 						if sreplen > 2 then
-							if not currentChannel[11] and pos >= #sample then
+							if not channel_oneShoot[ch] and pos >= #sample then
 								pos = srepeat
-								currentChannel[11] = true
-							elseif currentChannel[11] and pos >= srepeat+sreplen then
+								channel_oneShoot[ch] = true
+							elseif channel_oneShoot[ch] and pos >= srepeat+sreplen then
 								pos = srepeat
 							end
 						else
 							if  pos > #sample then
-								currentChannel[1] = 0
+								channel_instrument[ch] = 0
 								pos = 0
 							end
 						end
-						currentChannel[4] = pos
+						channel_position[ch] = pos
 						--qPlayingChannel = qPlayingChannel+1
 					end
 				end
 			end
 			--print(mixLeft, mixRight)
-			mixLeft = math.tanh(mixLeft*0.5)
-			mixRight = math.tanh(mixRight*0.5)
+			mixLeft = math.tanh(mixLeft*0.4)
+			mixRight = math.tanh(mixRight*0.4)
 			--qPlayingChannel = 0
 			--periodTone = mixLeft+mixRight
 			buffer[i] = {mixLeft, mixRight}
@@ -519,6 +524,8 @@ function editor.init()
 	bpm = 125
 	channels = {}
 	lastNote = {}
+	offsetCh = 0
+	selectedChannel = 0
 end
 
 function editor.resetPosition()
@@ -569,6 +576,9 @@ end
 function editor.left()
 	if cursorPos == 1 then
 		selectedChannel = math.max(0, selectedChannel - 1)
+		if selectedChannel > 5 then
+			offsetCh = math.max(0, offsetCh-1)
+		end
 		cursorPos = 6
 	end
 	cursorPos = math.max(1, cursorPos - 1)
@@ -582,7 +592,7 @@ function editor.right()
 	cursorPos = cursorPos + 1
 	if cursorPos == 6 then
 		selectedChannel = math.min(numChannels-1, selectedChannel + 1)
-		if selectedChannel == numChannels-1 then
+		if selectedChannel > 6 and selectedChannel < numChannels-1 then
 			offsetCh = offsetCh+1
 		end
 		cursorPos = 1
@@ -594,17 +604,29 @@ function editor.getSelectedChannel()
 end
 
 function editor.keyMap(key, sampleNum, channels)
-	for i = 0, 32 do
-		if key == "delete" then
-			if editor_mod and not fileSearch then
-				local data = (barPosition+patternPosition)*(numChannels*4) + selectedChannel*4
-				data_pattern[data+1] = 0
-				data_pattern[data+2] = 0
-				data_pattern[data+3] = 0
-				data_pattern[data+4] = 0
-			end
-			renderPattern = true
+	if key == "delete" then
+		if editor_mod and not fileSearch then
+			local data = (barPosition+patternPosition)*(numChannels*4) + selectedChannel*4
+			data_pattern[data+1] = 0
+			data_pattern[data+2] = 0
+			data_pattern[data+3] = 0
+			data_pattern[data+4] = 0
 		end
+		renderPattern = true
+	end
+	if key == "tab" then
+		if selectedChannel > 6 then
+			if offsetCh+1 >= numChannels then
+				selectedChannel = 0
+			end
+			offsetCh = (offsetCh+1)%numChannels
+		else
+			selectedChannel = selectedChannel+1
+		end
+		cursorPos = 1
+		renderPattern = true
+	end
+	for i = 0, 32 do
 		if key == numHex[i] and editor_mod then
 			local base = (patternPosition+barPosition)*numChannels*4 + selectedChannel*4
 			if cursorPos == 3 then
@@ -623,30 +645,32 @@ function editor.keyMap(key, sampleNum, channels)
 			if editor_mod and not fileSearch then
 				local data = (barPosition+patternPosition)*(numChannels*4) + selectedChannel*4
 				data_pattern[data+3] = bit.bor(bit.lshift(bit.band(sampleNum, 0x0F), 4), bit.band(data_pattern[data+3], 0x0F))
-				data_pattern[data+1] = bit.band(sampleNum, 0xF0)
-				data_pattern[data+1] = bit.rshift(bit.band(keyMap[key], 0xF00), 8)
+				data_pattern[data+1] = bit.bor(bit.band(sampleNum, 0xF0), bit.rshift(bit.band(keyMap[key], 0xF00), 8))
 				data_pattern[data+2] = bit.band(keyMap[key], 0xFF)
 				if not auto_play then
 					barPosition = barPosition+1
 				end
 			end
 			currentKey = (currentKey+1)%numChannels
-			local playChannel = (selectedChannel+currentKey-1)%numChannels+1
-			print(playChannel)
-			if playChannel%4 == 1 then
-				channels[playChannel][16] = 1
-			elseif playChannel%4 == 4 then
-				channels[playChannel][17] = 1
-			else
-				channels[playChannel][16] = 1
-				channels[playChannel][17] = 1
+			local playChannel = (selectedChannel+currentKey-1)%numChannels
+			if editor_mod then
+				playChannel = selectedChannel
+				currentKey = 0
 			end
-			channels[playChannel][1] = sampleNum
-			channels[playChannel][2] = keyMap[key]
-			channels[playChannel][3] = 1
-			channels[playChannel][4] = 1
-			channels[playChannel][8] = samples__info[channels[playChannel][1]][5]*2
-			channels[playChannel][9] = samples__info[channels[playChannel][1]][6]*2
+			if playChannel%4 == 1 then
+				channel_volumeLeft[playChannel] = 1.0
+			elseif playChannel%4 == 4 then
+				channel_volumeRight[playChannel] = 1.0
+			else
+				channel_volumeLeft[playChannel] = 1.0
+				channel_volumeRight[playChannel] = 1.0
+			end
+			channel_instrument[playChannel] = sampleNum
+			channel_period[playChannel] = keyMap[key]
+			channel_volume[playChannel] = 1
+			channel_position[playChannel] = 1
+			channel_srepeat[playChannel] = samples__info[channel_instrument[playChannel]][5]*2
+			channel_sreplen[playChannel] = samples__info[channel_instrument[playChannel]][6]*2
 			renderPattern = true
 		end
 	end

@@ -1,27 +1,42 @@
 channel = {}
 local barLines = {}
+local dPosCh = {}
+local ffi = require("ffi")
 
 function channel.init(range, channels)
-	for i=1, range do
-		channels[i] = {0, 1, 64, 1, false, 0, 0, 0, 0, true, false, 0, 0, 0, 0, 0, 0}
-	end
+	channel_instrument = ffi.new("uint8_t[?]", range)
+	channel_period = ffi.new("uint32_t[?]", range)
+	channel_volume = ffi.new("float[?]", range)
+	channel_position = ffi.new("float[?]", range)
+	channel_srepeat = ffi.new("uint32_t[?]", range)
+	channel_sreplen = ffi.new("uint32_t[?]", range)
+	channel_oneShoot = ffi.new("bool[?]", range)
+	channel_volumeLeft = ffi.new("float[?]", range)
+	channel_volumeRight = ffi.new("float[?]", range)
+	channel_muted = ffi.new("bool[?]", range)
+	channel_effects_portamentoTargetPitch = ffi.new("uint32_t[?]", range)
+	channel_effects_portamentoSpeed = ffi.new("uint8_t[?]", range)
+	channel_effects_samplePosition = ffi.new("int[?]", range)
+	channel_effects_vibratorPosition = ffi.new("float[?]", range)
+	channel_effects_vibratorSpeed = ffi.new("uint8_t[?]", range)
+	channel_effects_vibratorDepth = ffi.new("uint8_t[?]", range)
+	channel_effects_vibratorValue = ffi.new("float[?]", range)
 end
 
 function channel.specView(ch, x, y, t, offsetCh)
-	if t%2 == 0 and channels[ch] ~= nil then
+	if t%2 == 0 then
 		love.graphics.setCanvas(canvasChannelSpec)
-		if ch == 1+offsetCh then
+		if ch == offsetCh then
 			love.graphics.clear(0, 0, 0, 0)
 		end
 		love.graphics.setColor(0, 0.4, 0.4)
-		if channels[ch][10] then
+		if not channel_muted[ch] then
 			love.graphics.setColor(0, 1, 1)
 		end
-		local currentChannel = channels[ch]
-		local pos = math.floor(currentChannel[4])
-		local volume = currentChannel[3] or 0
+		local pos = math.floor(channel_position[ch])
+		local volume = channel_volume[ch] or 0
 		volume = volume*0.25
-		local sample = sampleDecoded[currentChannel[1]] or {}
+		local sample = sampleDecoded[channel_instrument[ch]] or {}
 		--local value = sample[pos] or 0
 		local offsetY = volume*(sample[pos] or 0)
 		local length = (#sample < 40 and #sample > 0) and #sample or 40
@@ -39,7 +54,7 @@ function channel.specView(ch, x, y, t, offsetCh)
 			local xx = x+(i+1)*offset
 			local yy = y+volume*-(sample[pos+i+1] or 0)
 			love.graphics.line(x+i*offset, offsetA, xx-2, yy)
-			--love.graphics.rectangle("fill", xx-2, yy, 1, 1)
+			--love.graphics.rectangle("fill", xx, yy, 1, 1)
 			offsetA = y+volume*-(sample[pos+i+1] or 0)
 			xp = xp+1
 		end
@@ -48,13 +63,16 @@ function channel.specView(ch, x, y, t, offsetCh)
 		love.graphics.print(ch, x+(ch-1), y-40)
 		--local lastfreq = volume*(sample[pos-1] or 0)
 		local barYPos = barLines[ch] or 0
-		love.graphics.setColor(0, barYPos/10, 0)
-		local offsetYMath = math.abs(offsetY*2)
+		local dPos = dPosCh[ch] or 0
+		love.graphics.setColor(0, barYPos*0.1, 0)
+		local offsetYMath = math.abs(dPos-offsetY)
 		if offsetYMath >= barYPos then
 			barYPos = offsetYMath
 		else
 			barYPos = math.max(barYPos-4, 0)
 		end
+		dPosCh[ch] = offsetY
+		--print(dPos, offsetY)
 		love.graphics.rectangle("fill", x, y+20, 4, -barYPos)
 		barLines[ch] = barYPos
 		love.graphics.setColor(1, 1, 1)
