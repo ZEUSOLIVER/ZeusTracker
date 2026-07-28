@@ -141,8 +141,9 @@ function love.load()
 	modstable = filePicker.load("./")
 	editor.noteOffset(856)
 	editor.localNoteOffset(offsetKey)
+	love.graphics.setDefaultFilter("nearest", "nearest")
 	love.graphics.setFont(font)
-	local font = love.graphics.newFont("gfx/Font.ttf", 12)
+	--local font = love.graphics.newFont("gfx/ZeusTracker.ttf", 12)
 	--love.graphics.setFont(font)
 	editor.sendBuffer({{0, 0}}, 1)
 	editor.initEngine(5900, 0.407)
@@ -453,7 +454,9 @@ end
 
 function love.wheelmoved(x, y)
 	if y > 0 then
-		if showSample then
+		if fileSearch then
+			filePicker.up()
+		elseif showSample then
 			zoomEditor = zoomEditor*1.2
 			zoomEditorTx = zoomEditorTx/1.2
 			oscilationWave(editor.getSelectedChannel(), screenWidth, screenHeight)
@@ -466,7 +469,9 @@ function love.wheelmoved(x, y)
 		end
 	end
 	if y < 0 then
-		if showSample then
+		if fileSearch then
+			filePicker.down()
+		elseif showSample then
 			if zoomEditorTx < 1 then
 				zoomEditor = zoomEditor/1.2
 				zoomEditorTx = zoomEditorTx*1.2

@@ -21,6 +21,20 @@ function channel.init(range, channels)
 	channel_effects_vibratorSpeed = ffi.new("uint8_t[?]", range)
 	channel_effects_vibratorDepth = ffi.new("uint8_t[?]", range)
 	channel_effects_vibratorValue = ffi.new("float[?]", range)
+	for ch = 0, range-1 do
+		channel_volumeLeft[ch] = 1
+		channel_volumeRight[ch] = 1
+		if ch%3 == 0 then
+			channel_volumeLeft[ch] = 1
+			channel_volumeRight[ch] = 0
+		elseif ch%3 == 3 then
+			channel_volumeRight[ch] = 1
+			channel_volumeLeft[ch] = 0
+		else
+			channel_volumeLeft[ch] = 1
+			channel_volumeRight[ch] = 1
+		end
+	end
 end
 
 function channel.specView(ch, x, y, t, offsetCh)

@@ -373,42 +373,37 @@ function processTrackerTick()
 			local param = b4
 			--print(toBinary(b1, 8), toBinary(b2, 8), toBinary(b3, 8), toBinary(period, 12))
 			--print("ticks: " .. ticksPerLine .. " bpm: " .. bpm)
-			if period > 0 then
-				if effect == 0x3 then
-					if instrument > 0 then
-						if param > 0 then
-							channel_effects_portamentoSpeed[ch] = param
-							channel_volume[ch] = samples__info[instrument][4]
-						end
-						channel_effects_portamentoTargetPitch[ch] = period*samples__info[instrument][3]
+			if effect == 0x3 then
+				if period > 0 then
+					if param > 0 then
+						channel_effects_portamentoSpeed[ch] = param
+						--channel_volume[ch] = samples__info[channel_instrument[ch]][4]
 					end
-				else
-					if instrument > 0 then
-						channel_volumeLeft[ch] = 1
-						channel_volumeRight[ch] = 1
-						if ch%4 == 0 then
-							channel_volumeLeft[ch] = 1
-							channel_volumeRight[ch] = 0
-						elseif ch%4 == 3 then
-							channel_volumeRight[ch] = 1
-							channel_volumeLeft[ch] = 0
-						else
-							channel_volumeLeft[ch] = 1
-							channel_volumeRight[ch] = 1
-						end
-						channel_instrument[ch] = instrument
-						channel_volume[ch] = samples__info[instrument][4]
-						channel_srepeat[ch] = samples__info[instrument][5]*2
-						channel_sreplen[ch] = samples__info[instrument][6]*2
-						if period > 0 then
-							channel_period[ch] = period*samples__info[instrument][3]
-							channel_position[ch] = 1
-							--channel_effects_portamentoSpeed[ch] = 0
-							channel_effects_vibratorPosition[ch] = 0
-							--[[channel_effects_vibratorSpeed[ch] = 0
-							channel_effects_vibratorDepth[ch] = 0
-							channel_effects_vibratorValue[ch] = 0]]
-						end
+					local channelFinetune = channel_instrument[ch]
+					if channelFinetune == 0 then
+						channel_effects_portamentoTargetPitch[ch] = period
+					else
+						channel_effects_portamentoTargetPitch[ch] = period*samples__info[channelFinetune][3]	
+					end
+				end
+			else
+				if instrument > 0 then
+					channel_instrument[ch] = instrument
+					channel_volume[ch] = samples__info[instrument][4]
+					channel_srepeat[ch] = samples__info[instrument][5]*2
+					channel_sreplen[ch] = samples__info[instrument][6]*2
+				end
+				if period > 0 then
+					local currentInst = channel_instrument[ch]
+
+					if currentInst > 0 then
+						channel_period[ch] = period*samples__info[channel_instrument[ch]][3]
+						channel_position[ch] = 1
+						--channel_effects_portamentoSpeed[ch] = 0
+						channel_effects_vibratorPosition[ch] = 0
+						--[[channel_effects_vibratorSpeed[ch] = 0
+						channel_effects_vibratorDepth[ch] = 0
+						channel_effects_vibratorValue[ch] = 0]]
 					end
 				end
 			end
@@ -566,13 +561,13 @@ function editor.barDown()
 end
 
 function editor.barUp()
-	barPosition = math.max(0, barPosition - 1)
 	if barPosition == 0 then
 		if counterY > 0 then
 			patternPosition = patternPosition - 1
 			counterY = counterY - 1
 		end
 	end
+	barPosition = math.max(0, barPosition - 1)
 end
 
 function editor.left()
