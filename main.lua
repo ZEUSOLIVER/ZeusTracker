@@ -502,10 +502,10 @@ function love.draw(dt)
 	else
 		ys = -80
 	end
-	--[[logo.ASCIIZ(x, y, z, angle_x, angle_y, 500, distance)
+	logo.ASCIIZ(x, y, z, angle_x, angle_y, 500, distance)
 	logo.ASCIIE(x, y, z, angle_x, angle_y, 500, distance)
 	logo.ASCIIU(x, y, z+17, angle_x, angle_y, 500, distance)
-	logo.ASCIIS(x, y, z+27, angle_x, angle_y, 500, distance)]]
+	logo.ASCIIS(x, y, z+27, angle_x, angle_y, 500, distance)
 	filePicker.draw(t)
 	love.graphics.setLineWidth(1)
 	love.graphics.setLineStyle("rough")
