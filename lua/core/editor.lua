@@ -1,5 +1,7 @@
 local editor = {}
 
+local AMIGA_PAL_CLOCK = 3546894.6
+
 local ffi = require("ffi")
 
 local effects = require("lua/core/effects")
@@ -261,21 +263,21 @@ function editor.drawPattern(q)
 				local effect
 				local param
 				if playerFormatXM then
-					local b1 = data_pattern[data+1]
-					local b2 = data_pattern[data+2]
-					local b3 = data_pattern[data+3]
+					local b1 = data_pattern[data]
+					local b2 = data_pattern[data+1]
+					local b3 = data_pattern[data+2]
+					local b4 = data_pattern[data+3]
 					local b4 = data_pattern[data+4]
-					local b4 = data_pattern[data+5]
 					period = b1
 					instrument = b2
 					volume = b3
 					effect = b4
 					param = b5
 				else
-					local b1 = data_pattern[data+1]
-					local b2 = data_pattern[data+2]
-					local b3 = data_pattern[data+3]
-					local b4 = data_pattern[data+4]
+					local b1 = data_pattern[data]
+					local b2 = data_pattern[data+1]
+					local b3 = data_pattern[data+2]
+					local b4 = data_pattern[data+3]
 					period = bit.bor(bit.lshift(bit.band(b1, 0x0F), 8), b2)
 					instrument = bit.bor(bit.band(b1, 0xF0), bit.rshift(bit.band(b3, 0xF0), 4))
 					effect = bit.band(b3, 0x0F)
@@ -323,15 +325,17 @@ function editor.incCounter(num)
 	counterY = (counterY + 1)*num
 end
 
-function interpolate(sample, pos, volume, pan)
-    if not sample then return 0 end
+function interpolate(sample, pos, volume, srepeat, pan)
+    if #sample == 0 then return 0 end
     local i = math.floor(pos)
-    if i < 1 or i >= #sample then
-        return 0
-    end
     local frac = pos - i
     local a = (sample[i] or 0)/128*volume*pan
-    local b = (sample[i+1] or 0)/128*volume*pan
+    local b
+    if i >= #sample then
+        b = sample[srepeat]/128*volume*pan
+    else
+    	b = sample[i+1]/128*volume*pan
+    end
     return a*(1-frac) + b*frac
 end
 
@@ -363,10 +367,10 @@ function processTrackerTick()
 			end
 			--print(base, data_pattern[base+1])
 			--print(currentPattern, patternPosition, rowsInPattern*(song__position[currentPattern]+1)+1, "realPosition Pattern: " .. song__position[currentPattern])
-			local b1 = data_pattern[base+1]
-			local b2 = data_pattern[base+2]
-			local b3 = data_pattern[base+3]
-			local b4 = data_pattern[base+4]
+			local b1 = data_pattern[base]
+			local b2 = data_pattern[base+1]
+			local b3 = data_pattern[base+2]
+			local b4 = data_pattern[base+3]
 			local period = bit.bor(bit.lshift(bit.band(b1, 0x0F), 8), b2)
 			local instrument = bit.bor(bit.band(b1, 0xF0), bit.rshift(bit.band(b3, 0xF0), 4))
 			local effect = bit.band(b3, 0x0F)
@@ -413,8 +417,8 @@ function processTrackerTick()
 	else
 		for ch=0, numChannels-1 do
 			local base = patternPosition*numChannels*4 + ch*4
-			local b3 = data_pattern[base+3]
-			local b4 = data_pattern[base+4]
+			local b3 = data_pattern[base+2]
+			local b4 = data_pattern[base+3]
 			local effect = bit.band(b3, 0x0F)
 			local param = b4
 			effects.applyPosEffects(effect, param, ch)
@@ -470,13 +474,13 @@ function editor.channelPlay(qChannels)
 						local srepeat = channel_srepeat[ch]
 						local sreplen = channel_sreplen[ch]
 
-						local pitch = 7093789.2 / (period * 2)
+						local pitch = AMIGA_PAL_CLOCK / period * 2
 						local advance = pitch/sampleRate
 						advance = math.min(4.0, advance)
 						--local advance = localNoteOffset/period
 						if type_interpolate == "linear" then
-							mixLeft = mixLeft+interpolate(sample, pos, volume, panLeft)
-							mixRight = mixLeft+interpolate(sample, pos, volume, panRight)
+							mixLeft = mixLeft+interpolate(sample, pos, volume, srepeat, panLeft)
+							mixRight = mixLeft+interpolate(sample, pos, volume, srepeat, panRight)
 						elseif type_interpolate == "none" then
 							mixLeft = mixLeft+(sample[math.floor(pos)] or 0)/128*volume*panLeft
 							mixRight = mixRight+(sample[math.floor(pos)] or 0)/128*volume*panRight
@@ -604,10 +608,21 @@ function editor.keyMap(key, sampleNum, channels)
 	if key == "delete" then
 		if editor_mod and not fileSearch then
 			local data = (barPosition+patternPosition)*(numChannels*4) + selectedChannel*4
-			data_pattern[data+1] = 0
-			data_pattern[data+2] = 0
-			data_pattern[data+3] = 0
-			data_pattern[data+4] = 0
+			if cursorPos == 2 then
+				data_pattern[data] = bit.bor(bit.lshift(0x00, 4), bit.band(data_pattern[data], 0x0F))
+				data_pattern[data+2] = bit.bor(bit.lshift(0x00, 4), bit.band(data_pattern[data+2], 0x0F))
+			elseif cursorPos == 3 then
+				data_pattern[data+2] = bit.bor(bit.band(data_pattern[data+2], 0xF0), bit.rshift(0x00, 4))
+			elseif cursorPos == 4 then
+				data_pattern[data+3] = bit.bor(bit.band(data_pattern[data+3], 0x0F), bit.lshift(0x00, 4))
+			elseif cursorPos == 5 then
+				data_pattern[data+3] = bit.bor(bit.rshift(0x00, 4), bit.band(data_pattern[data+3], 0xF0))
+			else
+				data_pattern[data] = 0
+				data_pattern[data+1] = 0
+				data_pattern[data+2] = 0
+				data_pattern[data+3] = 0
+			end
 		end
 		renderPattern = true
 	end
@@ -627,13 +642,13 @@ function editor.keyMap(key, sampleNum, channels)
 		if key == numHex[i] and editor_mod then
 			local base = (patternPosition+barPosition)*numChannels*4 + selectedChannel*4
 			if cursorPos == 3 then
-				data_pattern[base+cursorPos] = bit.bor(bit.band(data_pattern[base+cursorPos], 0xF0), numHex[key])
+				data_pattern[base+cursorPos-1] = bit.bor(bit.band(data_pattern[base+cursorPos-1], 0xF0), numHex[key])
 			end
 			if cursorPos == 4 then
-				data_pattern[base+4] = bit.bor(bit.lshift(numHex[key], 4), bit.band(data_pattern[base+4], 0x0F))
+				data_pattern[base+3] = bit.bor(bit.lshift(numHex[key], 4), bit.band(data_pattern[base+3], 0x0F))
 			end
 			if cursorPos == 5 then
-				data_pattern[base+4] = bit.bor(numHex[key], bit.band(data_pattern[base+4], 0xF0))
+				data_pattern[base+3] = bit.bor(numHex[key], bit.band(data_pattern[base+3], 0xF0))
 			end
 			renderPattern = true
 		end
@@ -641,9 +656,9 @@ function editor.keyMap(key, sampleNum, channels)
 			--editor.REALTIME_PLAY_SAMPLE(keyMap[key], sampleNum, 44010, 1)
 			if editor_mod and not fileSearch then
 				local data = (barPosition+patternPosition)*(numChannels*4) + selectedChannel*4
-				data_pattern[data+3] = bit.bor(bit.lshift(bit.band(sampleNum, 0x0F), 4), bit.band(data_pattern[data+3], 0x0F))
-				data_pattern[data+1] = bit.bor(bit.band(sampleNum, 0xF0), bit.rshift(bit.band(keyMap[key], 0xF00), 8))
-				data_pattern[data+2] = bit.band(keyMap[key], 0xFF)
+				data_pattern[data+2] = bit.bor(bit.lshift(bit.band(sampleNum, 0x0F), 4), bit.band(data_pattern[data+3], 0x0F))
+				data_pattern[data] = bit.bor(bit.band(sampleNum, 0xF0), bit.rshift(bit.band(keyMap[key], 0xF00), 8))
+				data_pattern[data+1] = bit.band(keyMap[key], 0xFF)
 				if not auto_play then
 					barPosition = barPosition+1
 				end
@@ -654,20 +669,18 @@ function editor.keyMap(key, sampleNum, channels)
 				playChannel = selectedChannel
 				currentKey = 0
 			end
-			if playChannel%4 == 1 then
-				channel_volumeLeft[playChannel] = 1.0
-			elseif playChannel%4 == 4 then
-				channel_volumeRight[playChannel] = 1.0
-			else
-				channel_volumeLeft[playChannel] = 1.0
-				channel_volumeRight[playChannel] = 1.0
-			end
 			channel_instrument[playChannel] = sampleNum
 			channel_period[playChannel] = keyMap[key]
 			channel_volume[playChannel] = 1
 			channel_position[playChannel] = 1
 			channel_srepeat[playChannel] = samples__info[channel_instrument[playChannel]][5]*2
 			channel_sreplen[playChannel] = samples__info[channel_instrument[playChannel]][6]*2
+			channel_instrument[playChannel+1] = sampleNum
+			channel_period[playChannel+1] = keyMap[key]
+			channel_volume[playChannel+1] = 1
+			channel_position[playChannel+1] = 1
+			channel_srepeat[playChannel+1] = samples__info[channel_instrument[playChannel]][5]*2
+			channel_sreplen[playChannel+1] = samples__info[channel_instrument[playChannel]][6]*2
 			renderPattern = true
 		end
 	end

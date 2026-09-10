@@ -1,4 +1,5 @@
 local mod = {}
+local ffi = require("ffi")
 
 ticksPerLine_enabled = false
 bpm_enabled = false
@@ -8,6 +9,7 @@ local signature_value = 0
 function mod.load(path)
 	--///////////////////LOAD MOD////////////////////
 	local file = assert(io.open(path, "rb"))
+	if not file then print("error: invalid file!") return end
 	local data = file:read("*all")
 	file:close()
 
@@ -16,9 +18,9 @@ function mod.load(path)
 	title = data:sub(0+1, 20)
 	for i=1, 31 do
 		local offset = 20+(30*(i-1))
-		samples__info[i][1] = {data:sub(offset+1, offset+22)}
+		samples__info[i][1] = {data:sub(offset+1, offset+22)} --SampleName
 		local cal1 = {data:byte(offset+23, offset+24)}
-		samples__info[i][2] = cal1[1]*256+cal1[2]
+		samples__info[i][2] = cal1[1]*256+cal1[2] --SampleName
 		local cal4 = bit.band(data:byte(offset+25, offset+25), 0x0F)
 		if cal4 > 7 then cal4 = cal4 - 16 end
 		local mult = 2^(-cal4/96.0)
@@ -41,7 +43,7 @@ function mod.load(path)
 	elseif underfined2 == "6CHN" then
 		signature_value = 1536
 		numChannels = 6
-	elseif underfined2 == "8CHN" or underfined2 == "FLT8" or underfined2 == "CD81"then
+	elseif underfined2 == "8CHN" or underfined2 == "FLT8" or underfined2 == "CD81" then
 		signature_value = 2048
 		numChannels = 8
 	elseif underfined2 == "14CH" then
@@ -62,18 +64,17 @@ function mod.load(path)
 	end
 	local numPatterns = maxPat+1
 	local pattern_length = 1086+numPatterns*signature_value
-	local out = {}
-	local k = 1
+	data_pattern = ffi.new("uint8_t[?]", pattern_length+1)
+	local k = 0
 	local chunkSize = 4024
 	for pos = 1085, 1086+pattern_length, chunkSize do
 		local chunkEnd = math.min(pos+chunkSize-1, 1086+pattern_length)
 		local bytes = {data:byte(pos, chunkEnd)}
 		for j=1, #bytes do
-			out[k] = bytes[j]
+			data_pattern[k] = bytes[j]
 			k=k+1
 		end
 	end
-	data_pattern = out
 	local offset = pattern_length
 	for i=1, 31 do
 		local sample_length = samples__info[i][2]*2

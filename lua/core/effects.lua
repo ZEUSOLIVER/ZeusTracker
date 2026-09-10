@@ -1,12 +1,13 @@
 effects = {}
+local ffi = require("ffi")
 --local editor = require("lua/core/editor")
 
-local sineTable = {
+local sineTable = ffi.new("uint8_t[32]", {
     0,  24,  49,  74,  97, 120, 141, 161, 
   180, 197, 212, 224, 235, 244, 250, 253, 
   255, 253, 250, 244, 235, 224, 212, 197, 
   180, 161, 141, 120,  97,  74,  49,  24
-}
+})
 
 function effects.defineCurrentPattern(pat)
 	currentPattern = pat+1

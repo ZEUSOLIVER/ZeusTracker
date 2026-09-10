@@ -13,6 +13,7 @@ local xm = require("lua/core/loadXM")
 local editor = require("lua/core/editor")
 local logo = require("lua/core/logo")
 local importSamplesFAF = require("lua/core/importSamplesFAF")
+local wav = require("lua/core/wav")
 
 local fileSearch = true
 editor_mod = false
@@ -37,7 +38,6 @@ song__length = {}
 underfined = {}
 song__position = {0}
 underfined2 = "M.K."
-signature_value = 1024
 data_pattern = {}
 sample_data = {{58, 127, 127, 127, 128, 128, 127, 127, 127, 127, 64, 180, 180}, {127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128, 127, 128}}
 sampleDecoded = {}
@@ -111,12 +111,16 @@ function oscilationWave(ch, screenWidth, screenHeight)
 	end
 	local offsetplay = 0
 	local offsetAmplitude = 0
-	local zoomEditorT = zoomEditor*(screenWidth)/sampleLength
+	local zoomEditorT = zoomEditor*screenWidth/sampleLength
 	local wavePrecision = math.min(sampleLength/2, math.floor(zoomEditorTx/zoomEditorT))+1
 	--love.graphics.setColor(0, 1, 180/255)
 	local lines = {}
+	local xm, ym = love.mouse.getPosition()
+	local zoomEditorOffset = zoomEditor-1
+	local sampleOffset = math.floor((sampleLength/zoomEditor)/(screenWidth/xm)*zoomEditorOffset)
+	print(sampleOffset)
 	for x=1, sampleLength, wavePrecision do
-		local sample = (sampleDecoded[currentSample] ~= nil) and sampleDecoded[currentSample][x] or 0
+		local sample = (sampleDecoded[currentSample] ~= nil) and sampleDecoded[currentSample][x+sampleOffset] or 0
 		local xx = 20+(x-1)*zoomEditorT
 		local yy = 190+screenHeight-sample/1.43
 		for i = 0, wavePrecision-1 do
@@ -173,8 +177,28 @@ function love.load()
 	samples__info[2][4] = 1
 	samples__info[2][5] = 0
 	samples__info[2][6] = 39
+	
+	local rawWav = wav.openWav("RED ZONE高音質.mp3")
+	local out = {}
+	local bitRate = wav.getBitsPerSample()
+	local ix = 1
+	for i = 0, wav.getLength()/2-1, 4 do
+		local v = rawWav:getSample(i)*128
+		--if v >= 128 then v = v-256 end
+		out[ix] = v
+		ix = ix+1
+	end
+	sampleDecoded[3] = out
+	samples__info[3][1] = "wav"
+	samples__info[3][2] = wav.getLength()/2
+	samples__info[3][3] = 2^(0/96.0)
+	samples__info[3][4] = 1
+	samples__info[3][5] = 0
+	samples__info[3][6] = 0
 
-	for i = 1, numChannels*4*rowsInPattern do
+	data_pattern = ffi.new("uint8_t[?]", numChannels*4*rowsInPattern)
+
+	for i = 0, numChannels*4*rowsInPattern-1 do
 		data_pattern[i] = 0
 	end
 	editor.init()
@@ -217,6 +241,8 @@ function love.update(dt)
 				loadSamples = false
 				importSamplesFAF.load(selected_file)
 			else
+				sampleDecoded = {}
+				sample_data = {}
 				editor.init()
 				channel.init(numChannels, channels)
 				playerFormatXM = false
@@ -502,10 +528,10 @@ function love.draw(dt)
 	else
 		ys = -80
 	end
-	logo.ASCIIZ(x, y, z, angle_x, angle_y, 500, distance)
+	--[[logo.ASCIIZ(x, y, z, angle_x, angle_y, 500, distance)
 	logo.ASCIIE(x, y, z, angle_x, angle_y, 500, distance)
 	logo.ASCIIU(x, y, z+17, angle_x, angle_y, 500, distance)
-	logo.ASCIIS(x, y, z+27, angle_x, angle_y, 500, distance)
+	logo.ASCIIS(x, y, z+27, angle_x, angle_y, 500, distance)]]
 	filePicker.draw(t)
 	love.graphics.setLineWidth(1)
 	love.graphics.setLineStyle("rough")
