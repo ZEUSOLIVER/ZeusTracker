@@ -178,7 +178,7 @@ function love.load()
 	samples__info[2][5] = 0
 	samples__info[2][6] = 39
 	
-	local rawWav = wav.openWav("RED ZONE高音質.mp3")
+	--[[local rawWav = wav.openWav("RED ZONE高音質.mp3")
 	local out = {}
 	local bitRate = wav.getBitsPerSample()
 	local ix = 1
@@ -194,7 +194,7 @@ function love.load()
 	samples__info[3][3] = 2^(0/96.0)
 	samples__info[3][4] = 1
 	samples__info[3][5] = 0
-	samples__info[3][6] = 0
+	samples__info[3][6] = 0]]
 
 	data_pattern = ffi.new("uint8_t[?]", numChannels*4*rowsInPattern)
 
